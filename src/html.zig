@@ -1,10 +1,33 @@
 const std = @import("std");
+
+const expect = std.testing.expect;
+
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 
 pub const TextContainer = struct {
     text: []const u8
 };
+
+test "The body is just the text inside when there is nothing else" {
+    const html: HTML = try HTML.parse(std.testing.allocator,
+        \\<!DOCTYPE html>
+        \\<html>
+        \\    <head>
+        \\        <title>Welcome to Zigrowser</title>
+        \\    </head>
+        \\    <body>
+        \\        Welcome to Zigrowser.
+        \\    </body>
+        \\</html>
+    );
+
+    // TODO: Make this work to not have the trailing space...
+
+    // expect(std.mem.eql(u8, "Welcome to Zigrowser.", html.body.text));
+
+    expect(std.mem.eql(u8, "Welcome to Zigrowser. ", html.body.text));
+}
 
 pub const HTML = struct {
     body: TextContainer,
@@ -42,6 +65,11 @@ pub const HTML = struct {
                 }
             }
         }
-        return HTML{ .body = TextContainer{ .text = text.items } };
+        const html: HTML = HTML{ .body = TextContainer{ .text = text.items } };
+
+        // TODO: Don't memory leak when parsing... this doesn't work. Figure out the right way
+        // text.deinit();
+
+        return html;
     }
 };

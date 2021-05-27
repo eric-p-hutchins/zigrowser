@@ -21,6 +21,7 @@ const Layout = layout.Layout;
 const glean = @embedFile("glean-5-10.bdf");
 const victor12 = @embedFile("VictorMono-Medium-12.bdf");
 const startPage = @embedFile("startPage.html");
+const testPage = @embedFile("testPage.html");
 
 var buf: [10_000_000]u8 = undefined;
 var fba = std.heap.FixedBufferAllocator.init(&buf);
@@ -46,6 +47,7 @@ pub fn main() anyerror!void {
     var victor12Font: BDFFont = try BDFFont.parse(&fba.allocator, std.mem.spanZ(victor12));
 
     const startPageHtml = try HTML.parse(&fba.allocator, std.mem.spanZ(startPage));
+    // const startPageHtml = try HTML.parse(&fba.allocator, std.mem.spanZ(testPage));
 
     const mainLayout = try Layout.init(&fba.allocator, &theFonts, startPageHtml.body, 0, 0, 320, 240);
 
