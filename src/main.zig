@@ -12,40 +12,22 @@ const BoundingBox = bdf.BoundingBox;
 const html = @import("html.zig");
 const HTML = html.HTML;
 
+const fonts = @import("fonts.zig");
+const Fonts = fonts.Fonts;
+
+const layout = @import("layout.zig");
+const Layout = layout.Layout;
+
 const glean = @embedFile("glean-5-10.bdf");
 const victor12 = @embedFile("VictorMono-Medium-12.bdf");
-const dejaVuEmbed = @embedFile("DejaVuSans.ttf");
 const startPage = @embedFile("startPage.html");
 
 var buf: [10_000_000]u8 = undefined;
 var fba = std.heap.FixedBufferAllocator.init(&buf);
-const gpa = std.heap.GeneralPurposeAllocator(.{}){};
-
-const FT_Library = c.FT_Library;
-const FT_Face = c.FT_Face;
-const FT_Bitmap = c.FT_Bitmap;
 
 const Error = error{FreeTypeInitializationError};
 
 const ZigrowserScreen = @import("screen.zig").ZigrowserScreen;
-
-pub fn initFreeType() !*FT_Library {
-    var library: ?*FT_Library = try fba.allocator.create(FT_Library);
-    _ = c.FT_Init_FreeType(library);
-    return library orelse error.FreeTypeInitializationError;
-}
-
-pub fn loadFace(library: *FT_Library, path: [*c]const u8) !*FT_Face {
-    var face: ?*FT_Face = try fba.allocator.create(FT_Face);
-    _ = c.FT_New_Face(library.*, path, 0, face);
-    return face orelse error.FreeTypeInitializationError;
-}
-
-pub fn loadFaceMemory(library: *FT_Library, memory: [*c]const u8, length: c_long) !*FT_Face {
-    var face: ?*FT_Face = try fba.allocator.create(FT_Face);
-    _ = c.FT_New_Memory_Face(library.*, memory, length, 0, face);
-    return face orelse error.FreeTypeInitializationError;
-}
 
 pub fn main() anyerror!void {
     std.log.info("Welcome to Zigrowser.", .{});
@@ -56,14 +38,7 @@ pub fn main() anyerror!void {
     }
     defer c.SDL_Quit();
 
-    var library: *FT_Library = try initFreeType();
-    // var dejavuSansFace: *FT_Face = try loadFace(library, "DejaVuSans.ttf");
-    var dejavuSansFace: *FT_Face = try loadFaceMemory(library, dejaVuEmbed, dejaVuEmbed.len);
-
-    var errorCode = c.FT_Set_Char_Size(dejavuSansFace.*, 0, 16 * 64, 72, 72);
-    if (errorCode != 0) {
-        std.log.info("error setting char size. code: {}", .{errorCode});
-    }
+    var theFonts: Fonts = try Fonts.init(&fba.allocator);
 
     var screen: ZigrowserScreen = ZigrowserScreen.init();
 
@@ -71,6 +46,8 @@ pub fn main() anyerror!void {
     var victor12Font: BDFFont = try BDFFont.parse(&fba.allocator, std.mem.spanZ(victor12));
 
     const startPageHtml = try HTML.parse(&fba.allocator, std.mem.spanZ(startPage));
+
+    const mainLayout = try Layout.init(&fba.allocator, &theFonts, startPageHtml.body, 0, 0, 320, 240);
 
     var done: bool = false;
     while (!done) {
@@ -81,7 +58,7 @@ pub fn main() anyerror!void {
             }
         }
         try screen.clear(255, 255, 255);
-        try screen.drawStringFT(dejavuSansFace, startPageHtml.body.text, 0, 0);
+        try mainLayout.draw(screen);
         try screen.present();
         _ = c.SDL_Delay(20);
     }

@@ -2,7 +2,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 
-const TextContainer = struct {
+pub const TextContainer = struct {
     text: []const u8
 };
 
