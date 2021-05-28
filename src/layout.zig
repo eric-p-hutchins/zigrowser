@@ -1,7 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
-const TextContainer = @import("html.zig").TextContainer;
+const HTMLElement = @import("html.zig").Element;
 
 const Fonts = @import("fonts.zig").Fonts;
 
@@ -11,17 +11,17 @@ pub const Layout = struct {
     const This = @This();
     children: ArrayList(This),
     fonts: *Fonts,
-    html: TextContainer,
+    element: HTMLElement,
     x: i32,
     y: i32,
     w: i32,
     h: i32,
 
-    pub fn init(allocator: *Allocator, fonts: *Fonts, html: TextContainer, x: i32, y: i32, w: i32, h: i32) !Layout {
+    pub fn init(allocator: *Allocator, fonts: *Fonts, element: HTMLElement, x: i32, y: i32, w: i32, h: i32) !Layout {
         return Layout{
             .children = ArrayList(This).init(allocator),
             .fonts = fonts,
-            .html = html,
+            .element = element,
             .x = x,
             .y = y,
             .w = w,
@@ -30,6 +30,6 @@ pub const Layout = struct {
     }
 
     pub fn draw(this: This, screen: ZigrowserScreen) !void {
-        try screen.drawStringFT(this.fonts.fonts.items[0], this.html.text, this.x, this.y);
+        try screen.drawStringFT(this.fonts.fonts.items[0], this.element.innerText, this.x, this.y);
     }
 };
