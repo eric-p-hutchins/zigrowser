@@ -1,7 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
-const HTMLElement = @import("html.zig").Element;
+const HTMLElement = @import("html.zig").HTMLElement;
 
 const Fonts = @import("fonts.zig").Fonts;
 

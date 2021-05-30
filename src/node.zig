@@ -1,3 +1,6 @@
+const std = @import("std");
+const ArrayList = std.ArrayList;
+
 const EventTarget = @import("eventtarget.zig");
 
 const Node = @This();
@@ -6,7 +9,7 @@ eventTarget: EventTarget,
 
 baseURI: ?[]u8 = null,
 
-childNodes: []Node = &[_]Node{},
+childNodes: ArrayList(*Node),
 
 firstChild: ?*Node = null,
 
