@@ -9,8 +9,7 @@ const BDFFont = bdf.BDFFont;
 const BDFChar = bdf.BDFChar;
 const BoundingBox = bdf.BoundingBox;
 
-const html = @import("html.zig");
-const HTMLElement = html.Element;
+const Document = @import("document.zig");
 
 const fonts = @import("fonts.zig");
 const Fonts = fonts.Fonts;
@@ -46,12 +45,12 @@ pub fn main() anyerror!void {
     var gleanFont: BDFFont = try BDFFont.parse(&fba.allocator, std.mem.spanZ(glean));
     var victor12Font: BDFFont = try BDFFont.parse(&fba.allocator, std.mem.spanZ(victor12));
 
-    const startPageHtml = try HTMLElement.parse(&fba.allocator, std.mem.spanZ(startPage));
-    // const startPageHtml = try HTMLElement.parse(&fba.allocator, std.mem.spanZ(testPage));
+    var startPageHtml = try Document.init(&fba.allocator, std.mem.spanZ(startPage));
+    // const startPageHtml = try Document.parse(&fba.allocator, std.mem.spanZ(testPage));
 
-    defer startPageHtml.free(&fba.allocator);
+    defer startPageHtml.deinit(&fba.allocator);
 
-    const mainLayout = try Layout.init(&fba.allocator, &theFonts, startPageHtml, 0, 0, 320, 240);
+    const mainLayout = try Layout.init(&fba.allocator, &theFonts, startPageHtml.body, 0, 0, 640, 480);
 
     var done: bool = false;
     while (!done) {

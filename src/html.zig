@@ -10,7 +10,7 @@ pub const Element = struct {
 
     innerText: []u8,
 
-    pub fn free(this: This, allocator: *Allocator) void {
+    pub fn free(this: *This, allocator: *Allocator) void {
         allocator.free(this.innerText);
     }
 
@@ -59,7 +59,7 @@ pub const Element = struct {
 };
 
 test "The body is just the text inside when there is nothing else" {
-    const html: Element = try HTML.parse(std.testing.allocator,
+    const html: Element = try Element.parse(std.testing.allocator,
         \\<!DOCTYPE html>
         \\<html>
         \\    <head>

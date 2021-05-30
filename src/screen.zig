@@ -12,9 +12,11 @@ pub const ZigrowserScreen = struct {
     hiDPI: bool = false,
 
     pub fn init() ZigrowserScreen {
+        var width: u32 = 640;
+        var height: u32 = 480;
         var window: ?*c.SDL_Window = null;
         var renderer: ?*c.SDL_Renderer = null;
-        if (c.SDL_CreateWindowAndRenderer(320, 240, c.SDL_WINDOW_ALLOW_HIGHDPI, &window, &renderer) != 0) {
+        if (c.SDL_CreateWindowAndRenderer(@intCast(c_int, width), @intCast(c_int, height), c.SDL_WINDOW_ALLOW_HIGHDPI, &window, &renderer) != 0) {
             std.log.err("Error creating window", .{});
             c.SDL_Quit();
             std.process.exit(1);
@@ -28,7 +30,7 @@ pub const ZigrowserScreen = struct {
         var h: c_int = 0;
         c.SDL_GL_GetDrawableSize(window, &w, &h);
 
-        if (w == 320 * 2) {
+        if (w == width * 2) {
             hiDPITest = true;
         }
 
