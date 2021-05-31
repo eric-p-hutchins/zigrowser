@@ -2,6 +2,11 @@ const std = @import("std");
 
 const c = @import("c.zig");
 
+const bdf = @import("bdf.zig");
+const BDFFont = bdf.BDFFont;
+const BDFChar = bdf.BDFChar;
+const BoundingBox = bdf.BoundingBox;
+
 const FT_Face = c.FT_Face;
 const FT_Bitmap = c.FT_Bitmap;
 
@@ -79,7 +84,7 @@ pub const ZigrowserScreen = struct {
         }
     }
 
-    pub fn drawString(this: This, font: BDFFont, string: []const u8, x: i32, y: i32) !void {
+    pub fn drawString(this: This, font: *BDFFont, string: []const u8, x: i32, y: i32) !void {
         var currentX: i32 = x;
         var originY: i32 = y + @intCast(i32, font.boundingBox.height);
         for (string) |byte, i| {
@@ -106,7 +111,7 @@ pub const ZigrowserScreen = struct {
         }
     }
 
-    pub fn drawChar(this: This, font: BDFFont, codePoint: u8, x: i32, y: i32) !void {
+    pub fn drawChar(this: This, font: *BDFFont, codePoint: u8, x: i32, y: i32) !void {
         var arenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
         defer arenaAllocator.deinit();
 

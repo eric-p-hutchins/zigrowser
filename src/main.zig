@@ -4,11 +4,6 @@ const c = @import("c.zig");
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 
-const bdf = @import("bdf.zig");
-const BDFFont = bdf.BDFFont;
-const BDFChar = bdf.BDFChar;
-const BoundingBox = bdf.BoundingBox;
-
 const Document = @import("document.zig");
 
 const fonts = @import("fonts.zig");
@@ -17,8 +12,6 @@ const Fonts = fonts.Fonts;
 const layout = @import("layout.zig");
 const Layout = layout.Layout;
 
-const glean = @embedFile("glean-5-10.bdf");
-const victor12 = @embedFile("VictorMono-Medium-12.bdf");
 const startPage = @embedFile("startPage.html");
 const testPage = @embedFile("testPage.html");
 
@@ -41,9 +34,6 @@ pub fn main() anyerror!void {
     var theFonts: Fonts = try Fonts.init(&fba.allocator);
 
     var screen: ZigrowserScreen = ZigrowserScreen.init();
-
-    var gleanFont: BDFFont = try BDFFont.parse(&fba.allocator, std.mem.spanZ(glean));
-    var victor12Font: BDFFont = try BDFFont.parse(&fba.allocator, std.mem.spanZ(victor12));
 
     var startPageHtml = try Document.init(&fba.allocator, std.mem.spanZ(startPage));
     // const startPageHtml = try Document.parse(&fba.allocator, std.mem.spanZ(testPage));

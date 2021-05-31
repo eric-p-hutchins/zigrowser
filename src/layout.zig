@@ -30,6 +30,7 @@ pub const Layout = struct {
     }
 
     pub fn draw(this: This, screen: ZigrowserScreen) !void {
-        try screen.drawStringFT(this.fonts.fonts.items[0], this.element.innerText, this.x, this.y);
+        // try screen.drawStringFT(this.fonts.fonts.items[0], this.element.innerText, this.x, this.y);
+        try screen.drawString(this.fonts.bdfFonts.items[2], this.element.innerText, this.x, this.y);
     }
 };
