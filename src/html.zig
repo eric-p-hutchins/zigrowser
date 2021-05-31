@@ -1,6 +1,7 @@
 const std = @import("std");
 const testing = std.testing;
 const expect = testing.expect;
+const expectEqual = testing.expectEqual;
 
 const Node = @import("node.zig");
 const EventTarget = @import("eventtarget.zig");
@@ -87,19 +88,14 @@ pub const HTMLElement = struct {
     }
 };
 
-test "The body is just the text inside when there is nothing else" {
-    var html: HTMLElement = try HTMLElement.parse(testing.allocator,
-        \\<!DOCTYPE html>
-        \\<html>
-        \\    <head>
-        \\        <title>Welcome to Zigrowser</title>
-        \\    </head>
+test "A simple body with just text inside has correct innerText and a text child node" {
+    var htmlElement: HTMLElement = try HTMLElement.parse(testing.allocator,
         \\    <body>
         \\        Welcome to Zigrowser.
         \\    </body>
-        \\</html>
     );
-    defer html.free(testing.allocator);
+    defer htmlElement.free(testing.allocator);
 
-    expect(std.mem.eql(u8, "Welcome to Zigrowser.", html.innerText));
+    expect(std.mem.eql(u8, "Welcome to Zigrowser.", htmlElement.innerText));
+    expectEqual(@intCast(usize, 1), htmlElement.element.node.childNodes.items.len);
 }

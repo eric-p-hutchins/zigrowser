@@ -21,5 +21,5 @@ might be fun to start playing with.
 To get the PressStart2P font as a BDF I used the following command:
 
 ```sh
-otf2bdf -r 96 -p 12 src/PressStart2P-Regular.ttf > src/PressStart2P-8.bdf
+otf2bdf -r 96 -p 12 src/PressStart2P-Regular.ttf > src/PressStart2P-16.bdf
 ```
