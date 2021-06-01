@@ -84,11 +84,28 @@ pub const ZigrowserScreen = struct {
         }
     }
 
+    pub fn fillRect(this: This, x: i32, y: i32, w: u32, h: u32, r: u8, g: u8, b: u8) !void {
+        var arenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+        defer arenaAllocator.deinit();
+
+        _ = c.SDL_SetRenderDrawColor(this.renderer, r, g, b, c.SDL_ALPHA_OPAQUE);
+        var rect: *c.SDL_Rect = try arenaAllocator.allocator.create(c.SDL_Rect);
+        rect.*.x = @intCast(c_int, x);
+        rect.*.y = @intCast(c_int, y);
+        if (this.hiDPI) {
+            rect.*.x *= 2;
+            rect.*.y *= 2;
+        }
+        rect.*.w = if (this.hiDPI) @intCast(c_int, w * 2) else @intCast(c_int, w);
+        rect.*.h = if (this.hiDPI) @intCast(c_int, h * 2) else @intCast(c_int, h);
+        _ = c.SDL_RenderFillRect(this.renderer, rect);
+    }
+
     pub fn drawString(this: This, font: *BDFFont, string: []const u8, x: i32, y: i32) !void {
         var currentX: i32 = x;
         var originY: i32 = y + @intCast(i32, font.boundingBox.height);
         for (string) |byte, i| {
-            const char: BDFChar = try font.getChar(byte);
+            const char: BDFChar = font.getChar(byte) catch try font.getChar(' ');
             const boundingBox: BoundingBox = char.boundingBox orelse font.boundingBox;
             const charX = @intCast(i32, currentX) + boundingBox.xOff;
             const charY = originY - @intCast(i32, boundingBox.height) - boundingBox.yOff;

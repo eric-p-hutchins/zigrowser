@@ -4,7 +4,7 @@ COMMENT Converted from OpenType font "PressStart2P-Regular.ttf" by "otf2bdf 3.0"
 COMMENT
 FONT -FreeType-Press Start 2P-Medium-R-Normal--16-120-96-96-P-134-ISO10646-1
 SIZE 12 96 96
-FONTBOUNDINGBOX 28 22 -12 -6
+FONTBOUNDINGBOX 28 16 -12 -6
 STARTPROPERTIES 19
 FOUNDRY "FreeType"
 FAMILY_NAME "Press Start 2P"

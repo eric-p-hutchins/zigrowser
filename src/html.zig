@@ -60,7 +60,7 @@ pub const HTMLElement = struct {
         };
     }
 
-    pub fn parse(allocator: *Allocator, file: []const u8) anyerror!HTMLElement {
+    pub fn parse(allocator: *Allocator, file: []const u8) anyerror!*HTMLElement {
         var hasSpace: bool = false;
         var text: ArrayList(u8) = ArrayList(u8).init(allocator);
         defer text.deinit();
@@ -87,13 +87,13 @@ pub const HTMLElement = struct {
                             }
                             break;
                         } else {
-                            var element: HTMLElement = try parse(allocator, file[i..]);
-                            var elementMemory = try allocator.create(HTMLElement);
-                            elementMemory.* = element;
+                            var element: *HTMLElement = try parse(allocator, file[i..]);
+                            // var elementMemory = try allocator.create(HTMLElement);
+                            // elementMemory.* = element;
                             for (element.element.outerHTML) |insideElementByte| {
                                 try outerHTML.append(insideElementByte);
                             }
-                            try childNodes.append(&elementMemory.element.node);
+                            try childNodes.append(&element.element.node);
                             i += @intCast(u32, element.element.outerHTML.len) - 1;
                             continue;
                         }
@@ -126,9 +126,16 @@ pub const HTMLElement = struct {
                         nodeType = 10;
                         break;
                     } else if (file[tagStart + 1] != '/') {
+                        var tagNameEnd: usize = tagStart + 1;
+                        while (file.len > tagNameEnd + 1 and file[tagNameEnd + 1] != ' ' and file[tagNameEnd + 1] != '>') : (tagNameEnd += 1) {}
                         if (outerTag == null) {
                             outerTag = file[tagStart .. i + 1];
-                            outerTagName = file[tagStart + 1 .. i];
+                            outerTagName = file[tagStart + 1 .. tagNameEnd + 1];
+                            if (std.mem.eql(u8, "img", outerTagName.?)) {
+                                break;
+                            } else if (std.mem.eql(u8, "br", outerTagName.?)) {
+                                break;
+                            }
                         }
                     }
                 }
@@ -156,7 +163,8 @@ pub const HTMLElement = struct {
             }
         }
 
-        return HTMLElement{
+        var elementMemory = try allocator.create(HTMLElement);
+        elementMemory.* = HTMLElement{
             .element = Element{
                 .node = Node{
                     .eventTarget = try EventTarget.init(allocator),
@@ -169,11 +177,12 @@ pub const HTMLElement = struct {
             },
             .innerText = try allocator.dupe(u8, text.items),
         };
+        return elementMemory;
     }
 };
 
 test "A simple body with just text inside has correct innerText and a text child node" {
-    var htmlElement: HTMLElement = try HTMLElement.parse(testing.allocator,
+    var htmlElement: *HTMLElement = try HTMLElement.parse(testing.allocator,
         \\    <body>
         \\        Welcome to Zigrowser.
         \\    </body>

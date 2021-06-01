@@ -31,16 +31,21 @@ pub fn main() anyerror!void {
     }
     defer c.SDL_Quit();
 
+    var flags = c.IMG_Init(c.IMG_INIT_PNG);
+    if (flags != c.IMG_INIT_PNG) {
+        const err: [*c]const u8 = c.IMG_GetError();
+        std.log.info("{}", .{std.mem.span(err)});
+    }
+
     var theFonts: Fonts = try Fonts.init(&fba.allocator);
 
     var screen: ZigrowserScreen = ZigrowserScreen.init();
 
-    var startPageHtml = try Document.init(&fba.allocator, std.mem.spanZ(startPage));
-    // const startPageHtml = try Document.parse(&fba.allocator, std.mem.spanZ(testPage));
-
+    // var startPageHtml = try Document.init(&fba.allocator, std.mem.spanZ(startPage));
+    var startPageHtml = try Document.init(&fba.allocator, std.mem.spanZ(testPage));
     defer startPageHtml.deinit(&fba.allocator);
 
-    const mainLayout = try Layout.init(&fba.allocator, &theFonts, startPageHtml.body, 0, 0, 640, 480);
+    const mainLayout = try Layout.init(&fba.allocator, screen.renderer.?, &theFonts, &startPageHtml.body.element.node, 0, 0, 640, 480);
 
     var done: bool = false;
     while (!done) {
@@ -51,7 +56,7 @@ pub fn main() anyerror!void {
             }
         }
         try screen.clear(255, 255, 255);
-        try mainLayout.draw(screen);
+        try mainLayout.draw(&screen);
         try screen.present();
         _ = c.SDL_Delay(20);
     }

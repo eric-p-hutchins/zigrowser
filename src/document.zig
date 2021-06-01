@@ -17,15 +17,15 @@ const expectEqualStrings = std.testing.expectEqualStrings;
 
 node: Node,
 
-head: HTMLElement,
-body: HTMLElement,
+head: *HTMLElement,
+body: *HTMLElement,
 
 pub fn init(allocator: *Allocator, string: []const u8) !Document {
     var inTag: bool = false;
     var tagStart: u32 = 0;
-    var documentElement: ?HTMLElement = null;
-    var head: ?HTMLElement = null;
-    var body: ?HTMLElement = null;
+    var documentElement: ?*HTMLElement = null;
+    var head: ?*HTMLElement = null;
+    var body: ?*HTMLElement = null;
     documentElement = try HTMLElement.parse(allocator, string);
     if (documentElement != null and documentElement.?.element.node.nodeType == 10) {
         documentElement = try HTMLElement.parse(allocator, string[documentElement.?.element.outerHTML.len..]);
@@ -35,12 +35,12 @@ pub fn init(allocator: *Allocator, string: []const u8) !Document {
             if (std.mem.eql(u8, "HEAD", node.nodeName)) {
                 var headElement: *Element = @fieldParentPtr(Element, "node", node);
                 var headHtmlElement: *HTMLElement = @fieldParentPtr(HTMLElement, "element", headElement);
-                head = headHtmlElement.*;
+                head = headHtmlElement;
             }
             if (std.mem.eql(u8, "BODY", node.nodeName)) {
                 var bodyElement: *Element = @fieldParentPtr(Element, "node", node);
                 var bodyHtmlElement: *HTMLElement = @fieldParentPtr(HTMLElement, "element", bodyElement);
-                body = bodyHtmlElement.*;
+                body = bodyHtmlElement;
             }
         }
     }
