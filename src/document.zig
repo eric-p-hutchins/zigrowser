@@ -60,6 +60,9 @@ pub fn init(allocator: *Allocator, string: []const u8) !Document {
 pub fn deinit(self: *Document, allocator: *Allocator) void {
     self.head.free(allocator);
     self.body.free(allocator);
+    // var element: *Element = @fieldParentPtr(Element, "node", &self.node);
+    // var htmlElement: *HTMLElement = @fieldParentPtr(HTMLElement, "element", element);
+    // htmlElement.free(allocator);
 }
 
 test "document initialization" {

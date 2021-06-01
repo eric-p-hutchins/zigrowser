@@ -23,18 +23,23 @@ pub const HTMLElement = struct {
 
     pub fn free(this: *This, allocator: *Allocator) void {
         allocator.free(this.innerText);
+        allocator.free(this.element.node.nodeName);
+        allocator.free(this.element.outerHTML);
         for (this.element.node.childNodes.items) |item| {
+            allocator.free(item.nodeName);
             if (item.nodeType == 1) {
                 var element: *Element = @fieldParentPtr(Element, "node", item);
                 var htmlElement: *HTMLElement = @fieldParentPtr(HTMLElement, "element", element);
+                htmlElement.free(allocator);
                 allocator.destroy(htmlElement);
             } else if (item.nodeType == 3) {
+                allocator.free(item.textContent.?);
                 var textObj: *Text = @fieldParentPtr(Text, "node", item);
+                this.element.node.childNodes.deinit();
                 allocator.destroy(textObj);
             }
-            allocator.destroy(item);
         }
-        this.element.node.childNodes.deinit();
+        allocator.destroy(this);
     }
 
     pub fn parseText(allocator: *Allocator, file: []const u8) !?Text {
@@ -52,7 +57,7 @@ pub const HTMLElement = struct {
             .node = Node{
                 .eventTarget = try EventTarget.init(allocator),
                 .isConnected = true,
-                .nodeName = "#text",
+                .nodeName = try allocator.dupe(u8, "#text"),
                 .nodeType = 3,
                 .textContent = try allocator.dupe(u8, textContent.items),
                 .childNodes = ArrayList(*Node).init(allocator),
@@ -88,8 +93,6 @@ pub const HTMLElement = struct {
                             break;
                         } else {
                             var element: *HTMLElement = try parse(allocator, file[i..]);
-                            // var elementMemory = try allocator.create(HTMLElement);
-                            // elementMemory.* = element;
                             for (element.element.outerHTML) |insideElementByte| {
                                 try outerHTML.append(insideElementByte);
                             }
@@ -107,8 +110,7 @@ pub const HTMLElement = struct {
                     if (textObj != null) {
                         var textMemory = try allocator.create(Text);
                         textMemory.* = textObj.?;
-                        var textNode = try allocator.create(Node);
-                        textNode = &textMemory.node;
+                        var textNode = &textMemory.node;
                         try childNodes.append(textNode);
                         i += @intCast(u32, textObj.?.node.textContent.?.len) - 1;
                         for (textObj.?.node.textContent.?) |textByte| {
