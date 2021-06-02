@@ -40,6 +40,12 @@ I then manually changed the font bounding box's height to 16 like this:
  FAMILY_NAME "Press Start 2P"
 ```
 
+## Milestone 1 ##
+
+Most of the things on the TODO list so far will get me to being able to produce this in the static welcome page HTML:
+
+![Milestone 1 Screenshot](/google-chrome-version-cleaned.png)
+
 ## TODO ##
 
 * Parse attributes and store the style information somewhere
