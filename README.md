@@ -51,4 +51,10 @@ I then manually changed the font bounding box's height to 16 like this:
 * Use style info from `<body>` for `margin`
 * Use style info from `<div>` for `padding`, `margin`, `background-color`, `border`, and `text-align`
 * Use style info from `<img>` for `width` and `margin-bottom`
+* Make welcome page officially have URL of `zigrowser://welcome`, make `zigrowser://zigrowser.png` resolve to
+  the image, and make the `src=...` attribute of the `<img>` in the welcome page point to `/zigrowser.png`
+* Add an address bar for browsing
+* Implement `file:///` protocol for local browsing
+* Implement `http://` protocol and test with `http://zig.show` so that I can continue to pretend that
+  "PressStart2P" is a reasonable choice for a default font ;-P
 * ~Fix memory leaks~
