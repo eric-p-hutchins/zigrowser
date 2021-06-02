@@ -51,4 +51,4 @@ I then manually changed the font bounding box's height to 16 like this:
 * Use style info from `<body>` for `margin`
 * Use style info from `<div>` for `padding`, `margin`, `background-color`, `border`, and `text-align`
 * Use style info from `<img>` for `width` and `margin-bottom`
-* Fix memory leaks
+* ~Fix memory leaks~

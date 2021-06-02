@@ -15,6 +15,9 @@ const expect = std.testing.expect;
 const expectEqual = std.testing.expectEqual;
 const expectEqualStrings = std.testing.expectEqualStrings;
 
+doctypeElement: ?*HTMLElement,
+htmlElement: *HTMLElement,
+
 node: Node,
 
 head: *HTMLElement,
@@ -23,11 +26,13 @@ body: *HTMLElement,
 pub fn init(allocator: *Allocator, string: []const u8) !Document {
     var inTag: bool = false;
     var tagStart: u32 = 0;
+    var doctypeElement: ?*HTMLElement = null;
     var documentElement: ?*HTMLElement = null;
     var head: ?*HTMLElement = null;
     var body: ?*HTMLElement = null;
     documentElement = try HTMLElement.parse(allocator, string);
     if (documentElement != null and documentElement.?.element.node.nodeType == 10) {
+        doctypeElement = documentElement;
         documentElement = try HTMLElement.parse(allocator, string[documentElement.?.element.outerHTML.len..]);
     }
     if (documentElement != null) {
@@ -45,6 +50,8 @@ pub fn init(allocator: *Allocator, string: []const u8) !Document {
         }
     }
     return Document{
+        .doctypeElement = doctypeElement,
+        .htmlElement = documentElement.?,
         .node = Node{
             .eventTarget = try EventTarget.init(allocator),
             .isConnected = true,
@@ -58,11 +65,12 @@ pub fn init(allocator: *Allocator, string: []const u8) !Document {
 }
 
 pub fn deinit(self: *Document, allocator: *Allocator) void {
-    self.head.free(allocator);
-    self.body.free(allocator);
-    // var element: *Element = @fieldParentPtr(Element, "node", &self.node);
-    // var htmlElement: *HTMLElement = @fieldParentPtr(HTMLElement, "element", element);
-    // htmlElement.free(allocator);
+    if (self.doctypeElement != null) {
+        self.doctypeElement.?.free(allocator);
+    }
+    // self.head.free(allocator);
+    // self.body.free(allocator);
+    self.htmlElement.free(allocator);
 }
 
 test "document initialization" {

@@ -26,19 +26,19 @@ pub const HTMLElement = struct {
         allocator.free(this.element.node.nodeName);
         allocator.free(this.element.outerHTML);
         for (this.element.node.childNodes.items) |item| {
-            allocator.free(item.nodeName);
             if (item.nodeType == 1) {
                 var element: *Element = @fieldParentPtr(Element, "node", item);
                 var htmlElement: *HTMLElement = @fieldParentPtr(HTMLElement, "element", element);
                 htmlElement.free(allocator);
-                allocator.destroy(htmlElement);
             } else if (item.nodeType == 3) {
+                allocator.free(item.nodeName);
                 allocator.free(item.textContent.?);
                 var textObj: *Text = @fieldParentPtr(Text, "node", item);
-                this.element.node.childNodes.deinit();
+                textObj.node.childNodes.deinit();
                 allocator.destroy(textObj);
             }
         }
+        this.element.node.childNodes.deinit();
         allocator.destroy(this);
     }
 
@@ -193,4 +193,17 @@ test "A simple body with just text inside has correct innerText and a text child
 
     expect(std.mem.eql(u8, "Welcome to Zigrowser.", htmlElement.innerText));
     expectEqual(@intCast(usize, 1), htmlElement.element.node.childNodes.items.len);
+}
+
+test "An HTML element" {
+    var htmlElement: *HTMLElement = try HTMLElement.parse(testing.allocator,
+        \\<html>
+        \\    <body>
+        \\        Welcome to Zigrowser.
+        \\    </body>
+        \\</html>
+    );
+    defer htmlElement.free(testing.allocator);
+
+    expectEqual(@intCast(usize, 3), htmlElement.element.node.childNodes.items.len);
 }
