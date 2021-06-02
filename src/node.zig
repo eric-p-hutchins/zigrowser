@@ -3,6 +3,8 @@ const ArrayList = std.ArrayList;
 
 const EventTarget = @import("eventtarget.zig");
 
+const Document = @import("document.zig");
+
 const Node = @This();
 
 eventTarget: EventTarget,
@@ -25,7 +27,7 @@ nodeType: u4,
 
 nodeValue: ?[]const u8 = null,
 
-// ownerDocument: ?Document,
+ownerDocument: ?*Document = null,
 
 parentNode: ?*Node = null,
 
@@ -34,3 +36,10 @@ parentNode: ?*Node = null,
 previousSibling: ?*Node = null,
 
 textContent: ?[]const u8 = null,
+
+pub fn setOwnerDocument(node: *Node, document: *Document) anyerror!void {
+    node.ownerDocument = document;
+    for (node.childNodes.items) |child| {
+        try child.setOwnerDocument(document);
+    }
+}

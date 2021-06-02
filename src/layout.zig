@@ -2,11 +2,19 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const AutoHashMap = std.AutoHashMap;
+const Document = @import("document.zig");
 const HTMLElement = @import("html.zig").HTMLElement;
 const Node = @import("node.zig");
 const Element = @import("element.zig");
 
 const Fonts = @import("fonts.zig").Fonts;
+
+const CSSRule = @import("css.zig").Rule;
+const CSSNumber = @import("css.zig").CSSNumber;
+const CSSDataType = @import("css.zig").CSSDataType;
+const CSSValue = @import("css.zig").CSSValue;
+const CSSLengthType = @import("css.zig").CSSLengthType;
+const CSSLengthUnit = @import("css.zig").CSSLengthUnit;
 
 const ZigrowserScreen = @import("screen.zig").ZigrowserScreen;
 
@@ -32,10 +40,92 @@ pub const Layout = struct {
     pub fn init(allocator: *Allocator, renderer: *c.SDL_Renderer, fonts: *Fonts, node: *Node, x: i32, y: i32, w: u32, h: u32) !Layout {
         var childrenPtr = try allocator.create(AutoHashMap(*Node, *This));
         childrenPtr.* = AutoHashMap(*Node, *This).init(allocator);
-        var marginTop: i32 = if (std.mem.eql(u8, "BODY", node.nodeName)) 8 else 0;
-        var marginBottom: i32 = if (std.mem.eql(u8, "BODY", node.nodeName)) 8 else 0;
-        var marginLeft: i32 = if (std.mem.eql(u8, "BODY", node.nodeName)) 8 else 0;
-        var marginRight: i32 = if (std.mem.eql(u8, "BODY", node.nodeName)) 8 else 0;
+
+        var marginTop: i32 = 0;
+        var marginBottom: i32 = 0;
+        var marginLeft: i32 = 0;
+        var marginRight: i32 = 0;
+
+        const document: ?*Document = node.ownerDocument;
+        if (document != null) {
+            var rules: []const CSSRule = try document.?.cssRuleSet.getRules(node);
+            for (rules) |rule| {
+                if (std.mem.eql(u8, "margin-top", rule.property)) {
+                    switch (rule.value) {
+                        CSSDataType.length => |length| {
+                            switch (length.unit) {
+                                CSSLengthUnit.px => {
+                                    switch (length.value) {
+                                        CSSNumber.int => |int_length| {
+                                            marginTop = @intCast(i32, int_length);
+                                        },
+                                        CSSNumber.float => |float_length| {},
+                                    }
+                                },
+                                else => {},
+                            }
+                        },
+                        else => {},
+                    }
+                } else if (std.mem.eql(u8, "margin-left", rule.property)) {
+                    switch (rule.value) {
+                        CSSDataType.length => |length| {
+                            switch (length.unit) {
+                                CSSLengthUnit.px => {
+                                    switch (length.value) {
+                                        CSSNumber.int => |int_length| {
+                                            marginLeft = @intCast(i32, int_length);
+                                        },
+                                        CSSNumber.float => |float_length| {},
+                                    }
+                                },
+                                else => {},
+                            }
+                        },
+                        else => {},
+                    }
+                } else if (std.mem.eql(u8, "margin-bottom", rule.property)) {
+                    switch (rule.value) {
+                        CSSDataType.length => |length| {
+                            switch (length.unit) {
+                                CSSLengthUnit.px => {
+                                    switch (length.value) {
+                                        CSSNumber.int => |int_length| {
+                                            marginBottom = @intCast(i32, int_length);
+                                        },
+                                        CSSNumber.float => |float_length| {},
+                                    }
+                                },
+                                else => {},
+                            }
+                        },
+                        else => {},
+                    }
+                } else if (std.mem.eql(u8, "margin-right", rule.property)) {
+                    switch (rule.value) {
+                        CSSDataType.length => |length| {
+                            switch (length.unit) {
+                                CSSLengthUnit.px => {
+                                    switch (length.value) {
+                                        CSSNumber.int => |int_length| {
+                                            marginRight = @intCast(i32, int_length);
+                                        },
+                                        CSSNumber.float => |float_length| {},
+                                    }
+                                },
+                                else => {},
+                            }
+                        },
+                        else => {},
+                    }
+                }
+            }
+        }
+
+        // var marginTop: i32 = if (std.mem.eql(u8, "BODY", node.nodeName)) 8 else 0;
+        // var marginBottom: i32 = if (std.mem.eql(u8, "BODY", node.nodeName)) 8 else 0;
+        // var marginLeft: i32 = if (std.mem.eql(u8, "BODY", node.nodeName)) 8 else 0;
+        // var marginRight: i32 = if (std.mem.eql(u8, "BODY", node.nodeName)) 8 else 0;
 
         var newW: ?u32 = null;
         var newH: ?u32 = null;

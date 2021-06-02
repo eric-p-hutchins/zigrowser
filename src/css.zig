@@ -2,6 +2,8 @@ const std = @import("std");
 const testing = std.testing;
 const expectEqual = testing.expectEqual;
 
+const Node = @import("node.zig");
+
 pub const CSSDataType = enum {
     length,
     color,
@@ -59,7 +61,7 @@ pub const Rule = struct {
 };
 
 pub const RuleSet = struct {
-    getRules: fn (node: *Node) ![]const Rule,
+    getRules: fn (node: *Node) anyerror![]const Rule,
 };
 
 test "CSS length" {

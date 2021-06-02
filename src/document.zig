@@ -8,6 +8,12 @@ const Element = @import("element.zig");
 
 const HTMLElement = @import("html.zig").HTMLElement;
 
+const CSSRuleSet = @import("css.zig").RuleSet;
+const CSSRule = @import("css.zig").Rule;
+const CSSValue = @import("css.zig").CSSValue;
+const CSSLengthType = @import("css.zig").CSSLengthType;
+const CSSLengthUnit = @import("css.zig").CSSLengthUnit;
+
 const Document = @This();
 
 const testing = std.testing;
@@ -23,7 +29,62 @@ node: Node,
 head: *HTMLElement,
 body: *HTMLElement,
 
-pub fn init(allocator: *Allocator, string: []const u8) !Document {
+cssRuleSet: CSSRuleSet,
+
+const UserAgentCSSRuleSet = struct {
+    fn getRules(node: *Node) anyerror![]const CSSRule {
+        // TODO: Make this better somehow... it's really ugly
+
+        // This represents the default user-agent rule of "body { margin: 8px }"
+        if (std.mem.eql(u8, "BODY", node.nodeName)) {
+            return &[_]CSSRule{
+                CSSRule{
+                    .property = "margin-top",
+                    .value = CSSValue{
+                        .length = CSSLengthType{
+                            .value = .{ .int = 8 },
+                            .unit = CSSLengthUnit.px,
+                        },
+                    },
+                },
+                CSSRule{
+                    .property = "margin-left",
+                    .value = CSSValue{
+                        .length = CSSLengthType{
+                            .value = .{ .int = 8 },
+                            .unit = CSSLengthUnit.px,
+                        },
+                    },
+                },
+                CSSRule{
+                    .property = "margin-bottom",
+                    .value = CSSValue{
+                        .length = CSSLengthType{
+                            .value = .{ .int = 8 },
+                            .unit = CSSLengthUnit.px,
+                        },
+                    },
+                },
+                CSSRule{
+                    .property = "margin-right",
+                    .value = CSSValue{
+                        .length = CSSLengthType{
+                            .value = .{ .int = 8 },
+                            .unit = CSSLengthUnit.px,
+                        },
+                    },
+                },
+            };
+        }
+        return &[_]CSSRule{};
+    }
+
+    ruleSet: CSSRuleSet = CSSRuleSet{
+        .getRules = getRules,
+    },
+};
+
+pub fn init(allocator: *Allocator, string: []const u8) !*Document {
     var inTag: bool = false;
     var tagStart: u32 = 0;
     var doctypeElement: ?*HTMLElement = null;
@@ -49,7 +110,10 @@ pub fn init(allocator: *Allocator, string: []const u8) !Document {
             }
         }
     }
-    return Document{
+    const ruleSet = UserAgentCSSRuleSet{};
+    const document: *Document = try allocator.create(Document);
+    document.* = Document{
+        .cssRuleSet = ruleSet.ruleSet,
         .doctypeElement = doctypeElement,
         .htmlElement = documentElement.?,
         .node = Node{
@@ -58,18 +122,19 @@ pub fn init(allocator: *Allocator, string: []const u8) !Document {
             .nodeName = "#document",
             .nodeType = 9,
             .childNodes = ArrayList(*Node).init(allocator),
+            .ownerDocument = document,
         },
         .head = head.?,
         .body = body.?,
     };
+    try document.htmlElement.element.node.setOwnerDocument(document);
+    return document;
 }
 
 pub fn deinit(self: *Document, allocator: *Allocator) void {
     if (self.doctypeElement != null) {
         self.doctypeElement.?.free(allocator);
     }
-    // self.head.free(allocator);
-    // self.body.free(allocator);
     self.htmlElement.free(allocator);
 }
 

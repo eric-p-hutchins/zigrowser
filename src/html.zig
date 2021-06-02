@@ -179,6 +179,11 @@ pub const HTMLElement = struct {
             },
             .innerText = try allocator.dupe(u8, text.items),
         };
+
+        for (childNodes.items) |node| {
+            node.parentNode = &elementMemory.element.node;
+        }
+
         return elementMemory;
     }
 };
