@@ -1,4 +1,6 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
+const ArrayList = std.ArrayList;
 const testing = std.testing;
 const expectEqual = testing.expectEqual;
 
@@ -61,7 +63,8 @@ pub const Rule = struct {
 };
 
 pub const RuleSet = struct {
-    getRules: fn (node: *Node) anyerror![]const Rule,
+    const This = @This();
+    getRules: fn (this: *This, node: *Node, allocator: *Allocator) anyerror!ArrayList(Rule),
 };
 
 test "CSS length" {

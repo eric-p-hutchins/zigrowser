@@ -101,7 +101,7 @@ pub const ZigrowserScreen = struct {
         _ = c.SDL_RenderFillRect(this.renderer, rect);
     }
 
-    pub fn drawString(this: This, font: *BDFFont, string: []const u8, x: i32, y: i32) !void {
+    pub fn drawString(this: This, font: *BDFFont, string: []const u8, x: i32, y: i32, r: u8, g: u8, b: u8) !void {
         var currentX: i32 = x;
         var originY: i32 = y + @intCast(i32, font.boundingBox.height);
         for (string) |byte, i| {
@@ -109,7 +109,7 @@ pub const ZigrowserScreen = struct {
             const boundingBox: BoundingBox = char.boundingBox orelse font.boundingBox;
             const charX = @intCast(i32, currentX) + boundingBox.xOff;
             const charY = originY - @intCast(i32, boundingBox.height) - boundingBox.yOff;
-            try this.drawChar(font, byte, charX, charY);
+            try this.drawChar(font, byte, charX, charY, r, g, b);
             currentX += @intCast(i32, char.dWidth);
         }
     }
@@ -128,11 +128,11 @@ pub const ZigrowserScreen = struct {
         }
     }
 
-    pub fn drawChar(this: This, font: *BDFFont, codePoint: u8, x: i32, y: i32) !void {
+    pub fn drawChar(this: This, font: *BDFFont, codePoint: u8, x: i32, y: i32, r: u8, g: u8, b: u8) !void {
         var arenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
         defer arenaAllocator.deinit();
 
-        _ = c.SDL_SetRenderDrawColor(this.renderer, 0, 0, 0, c.SDL_ALPHA_OPAQUE);
+        _ = c.SDL_SetRenderDrawColor(this.renderer, r, g, b, c.SDL_ALPHA_OPAQUE);
         for (font.chars) |char, i| {
             if (char.codePoint == codePoint) {
                 for (char.lines) |line, j| {

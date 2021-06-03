@@ -10,6 +10,9 @@ const Element = @import("element.zig");
 const Fonts = @import("fonts.zig").Fonts;
 
 const CSSRule = @import("css.zig").Rule;
+const CSSColor = @import("css.zig").CSSColor;
+const CSSRGBAColor = @import("css.zig").CSSRGBAColor;
+const CSSRuleSet = @import("css.zig").RuleSet;
 const CSSNumber = @import("css.zig").CSSNumber;
 const CSSDataType = @import("css.zig").CSSDataType;
 const CSSValue = @import("css.zig").CSSValue;
@@ -31,6 +34,8 @@ pub const Layout = struct {
     y: i32,
     w: u32,
     h: u32,
+    backgroundColor: ?CSSColor = null,
+    textColor: CSSColor = CSSColor{ .rgba = CSSRGBAColor{ .r = 0, .g = 0, .b = 0, .a = 255 } },
     marginTop: i32 = 0,
     marginBottom: i32 = 0,
     marginLeft: i32 = 0,
@@ -46,10 +51,14 @@ pub const Layout = struct {
         var marginLeft: i32 = 0;
         var marginRight: i32 = 0;
 
+        var backgroundColor: ?CSSColor = null;
+        var textColor: CSSColor = CSSColor{ .rgba = CSSRGBAColor{ .r = 0, .g = 0, .b = 0, .a = 255 } };
+
         const document: ?*Document = node.ownerDocument;
         if (document != null) {
-            var rules: []const CSSRule = try document.?.cssRuleSet.getRules(node);
-            for (rules) |rule| {
+            var ruleSet: *CSSRuleSet = document.?.cssRuleSet;
+            var rules: ArrayList(CSSRule) = try ruleSet.getRules(ruleSet, node, allocator);
+            for (rules.items) |rule| {
                 if (std.mem.eql(u8, "margin-top", rule.property)) {
                     switch (rule.value) {
                         CSSDataType.length => |length| {
@@ -118,14 +127,24 @@ pub const Layout = struct {
                         },
                         else => {},
                     }
+                } else if (std.mem.eql(u8, "background-color", rule.property)) {
+                    switch (rule.value) {
+                        CSSDataType.color => |color| {
+                            backgroundColor = color;
+                        },
+                        else => {},
+                    }
+                } else if (std.mem.eql(u8, "color", rule.property)) {
+                    switch (rule.value) {
+                        CSSDataType.color => |color| {
+                            textColor = color;
+                        },
+                        else => {},
+                    }
                 }
             }
+            rules.deinit();
         }
-
-        // var marginTop: i32 = if (std.mem.eql(u8, "BODY", node.nodeName)) 8 else 0;
-        // var marginBottom: i32 = if (std.mem.eql(u8, "BODY", node.nodeName)) 8 else 0;
-        // var marginLeft: i32 = if (std.mem.eql(u8, "BODY", node.nodeName)) 8 else 0;
-        // var marginRight: i32 = if (std.mem.eql(u8, "BODY", node.nodeName)) 8 else 0;
 
         var newW: ?u32 = null;
         var newH: ?u32 = null;
@@ -201,10 +220,22 @@ pub const Layout = struct {
             .marginLeft = marginLeft,
             .marginRight = marginRight,
             .texture = texture,
+            .backgroundColor = backgroundColor,
+            .textColor = textColor,
         };
     }
 
     pub fn draw(this: This, screen: *ZigrowserScreen) anyerror!void {
+        if (this.backgroundColor) |backgroundColor| {
+            var x = if (screen.hiDPI) this.x * 2 else this.x;
+            var y = if (screen.hiDPI) this.y * 2 else this.y;
+            var w = if (screen.hiDPI) this.w * 2 else this.w;
+            var h = if (screen.hiDPI) this.h * 2 else this.h;
+            var r = this.backgroundColor.?.rgba.r;
+            var g = this.backgroundColor.?.rgba.g;
+            var b = this.backgroundColor.?.rgba.b;
+            try screen.fillRect(x, y, w, h, r, g, b);
+        }
         if (this.node.textContent != null) {
             var firstNonSpace: ?usize = null;
             var lastNonSpace: ?usize = null;
@@ -222,7 +253,10 @@ pub const Layout = struct {
                     total = 1;
                 }
                 var extent = this.node.textContent.?[firstNonSpace.? .. lastNonSpace.? + 1];
-                try screen.drawString(this.fonts.bdfFonts.items[2], extent, this.x, this.y);
+                var r = this.textColor.rgba.r;
+                var g = this.textColor.rgba.g;
+                var b = this.textColor.rgba.b;
+                try screen.drawString(this.fonts.bdfFonts.items[2], extent, this.x, this.y, r, g, b);
             }
         }
 
