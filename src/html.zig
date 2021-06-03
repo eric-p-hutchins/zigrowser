@@ -77,7 +77,6 @@ pub const HTMLElement = struct {
         var nodeType: u4 = 1;
         var inTag: bool = false;
         var childNodes = ArrayList(*Node).init(allocator);
-        var pastLeadingWhitespace: bool = false;
         var tagStart: u32 = 0;
         var i: u32 = 0;
         while (i < file.len) : (i += 1) {

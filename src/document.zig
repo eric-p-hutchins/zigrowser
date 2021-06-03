@@ -33,6 +33,7 @@ body: *HTMLElement,
 
 cssRuleSet: *CSSRuleSet,
 
+// TODO: Move to css.zig (or inside a css/ subdirectory) (or a file for the user-agent maybe)
 const UserAgentCSSRuleSet = struct {
     fn getRules(this: *CSSRuleSet, node: *Node, allocator: *Allocator) anyerror!ArrayList(CSSRule) {
 
@@ -86,6 +87,7 @@ const UserAgentCSSRuleSet = struct {
     },
 };
 
+// TODO: Move to css.zig (or inside a css/ subdirectory)
 const GenericCSSRuleSet = struct {
     fn getRules(this: *CSSRuleSet, node: *Node, allocator: *Allocator) anyerror!ArrayList(CSSRule) {
         var rules: ArrayList(CSSRule) = ArrayList(CSSRule).init(allocator);
@@ -96,6 +98,9 @@ const GenericCSSRuleSet = struct {
         //
         // Also, rename "Rule" to something like "KeyValue" or something and "Rule" should really include the
         // full description of what it applies to (tag, class, descendent, etc.) along with the key-value pair
+        //
+        // Then this getRules can search those for applicable rules based on the criteria of the given node
+        // and return those key-value pairs
 
         var descendentOfBody: bool = false;
         var currentNode: ?*Node = node;
@@ -141,6 +146,7 @@ const GenericCSSRuleSet = struct {
     },
 };
 
+// TODO: Move to css.zig (or inside a css/ subdirectory)
 const CompositeCSSRuleSet = struct {
     fn init(allocator: *Allocator) !CompositeCSSRuleSet {
         return CompositeCSSRuleSet{
