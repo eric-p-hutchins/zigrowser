@@ -57,7 +57,7 @@ pub const Layout = struct {
         const document: ?*Document = node.ownerDocument;
         if (document != null) {
             var ruleSet: *CSSRuleSet = document.?.cssRuleSet;
-            var rules: ArrayList(CSSRule) = try ruleSet.getRules(ruleSet, node, allocator);
+            var rules: ArrayList(CSSRule) = try ruleSet.getRules(node, allocator);
             for (rules.items) |rule| {
                 if (std.mem.eql(u8, "margin-top", rule.property)) {
                     switch (rule.value) {

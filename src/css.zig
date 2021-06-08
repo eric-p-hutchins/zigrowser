@@ -64,7 +64,173 @@ pub const Rule = struct {
 
 pub const RuleSet = struct {
     const This = @This();
-    getRules: fn (this: *This, node: *Node, allocator: *Allocator) anyerror!ArrayList(Rule),
+
+    fn noOpDeinit(this: *This) void {}
+
+    getRulesFn: fn (this: *This, node: *Node, allocator: *Allocator) anyerror!ArrayList(Rule),
+    deinitFn: fn (this: *This) void = noOpDeinit,
+
+    pub fn getRules(this: *This, node: *Node, allocator: *Allocator) anyerror!ArrayList(Rule) {
+        return this.getRulesFn(this, node, allocator);
+    }
+
+    pub fn deinit(this: *This) void {
+        this.deinitFn(this);
+    }
+};
+
+pub const UserAgentCSSRuleSet = struct {
+    fn getRules(this: *RuleSet, node: *Node, allocator: *Allocator) anyerror!ArrayList(Rule) {
+
+        // TODO: Make this better somehow... it's really ugly
+        var rules: ArrayList(Rule) = ArrayList(Rule).init(allocator);
+
+        // This represents the default user-agent rule of "body { margin: 8px }"
+        if (std.mem.eql(u8, "BODY", node.nodeName)) {
+            try rules.append(Rule{
+                .property = "margin-top",
+                .value = CSSValue{
+                    .length = CSSLengthType{
+                        .value = .{ .int = 8 },
+                        .unit = CSSLengthUnit.px,
+                    },
+                },
+            });
+            try rules.append(Rule{
+                .property = "margin-left",
+                .value = CSSValue{
+                    .length = CSSLengthType{
+                        .value = .{ .int = 8 },
+                        .unit = CSSLengthUnit.px,
+                    },
+                },
+            });
+            try rules.append(Rule{
+                .property = "margin-bottom",
+                .value = CSSValue{
+                    .length = CSSLengthType{
+                        .value = .{ .int = 8 },
+                        .unit = CSSLengthUnit.px,
+                    },
+                },
+            });
+            try rules.append(Rule{
+                .property = "margin-right",
+                .value = CSSValue{
+                    .length = CSSLengthType{
+                        .value = .{ .int = 8 },
+                        .unit = CSSLengthUnit.px,
+                    },
+                },
+            });
+        }
+        return rules;
+    }
+
+    ruleSet: RuleSet = RuleSet{
+        .getRulesFn = getRules,
+    },
+};
+
+pub const GenericCSSRuleSet = struct {
+    fn getRules(this: *RuleSet, node: *Node, allocator: *Allocator) anyerror!ArrayList(Rule) {
+        var rules: ArrayList(Rule) = ArrayList(Rule).init(allocator);
+
+        // TODO: Don't put this here but give functions to GenericCSSRuleSet that allow the rules to be added
+        //
+        // body { background-color: #131315; color: white }
+        //
+        // Also, rename "Rule" to something like "KeyValue" or something and "Rule" should really include the
+        // full description of what it applies to (tag, class, descendent, etc.) along with the key-value pair
+        //
+        // Then this getRules can search those for applicable rules based on the criteria of the given node
+        // and return those key-value pairs
+
+        var descendentOfBody: bool = false;
+        var currentNode: ?*Node = node;
+        while (currentNode != null) : (currentNode = currentNode.?.parentNode) {
+            if (std.mem.eql(u8, "BODY", currentNode.?.nodeName)) {
+                descendentOfBody = true;
+                break;
+            }
+        }
+        if (descendentOfBody) {
+            try rules.append(Rule{
+                .property = "background-color",
+                .value = CSSValue{
+                    .color = CSSColor{
+                        .rgba = CSSRGBAColor{
+                            .r = 19,
+                            .g = 19,
+                            .b = 21,
+                            .a = 255,
+                        },
+                    },
+                },
+            });
+            try rules.append(Rule{
+                .property = "color",
+                .value = CSSValue{
+                    .color = CSSColor{
+                        .rgba = CSSRGBAColor{
+                            .r = 255,
+                            .g = 255,
+                            .b = 255,
+                            .a = 255,
+                        },
+                    },
+                },
+            });
+        }
+
+        return rules;
+    }
+    ruleSet: RuleSet = RuleSet{
+        .getRulesFn = getRules,
+    },
+};
+
+pub const CompositeCSSRuleSet = struct {
+    pub fn init(allocator: *Allocator) !CompositeCSSRuleSet {
+        return CompositeCSSRuleSet{
+            .allocator = allocator,
+            .ruleSets = ArrayList(*RuleSet).init(allocator),
+        };
+    }
+
+    pub fn deinit(this: *RuleSet) void {
+        var composite: *CompositeCSSRuleSet = @fieldParentPtr(CompositeCSSRuleSet, "ruleSet", this);
+        for (composite.ruleSets.items) |ruleSet, i| {
+            composite.allocator.destroy(ruleSet);
+        }
+        composite.ruleSets.deinit();
+        composite.allocator.destroy(composite);
+    }
+
+    pub fn addRuleSet(this: *CompositeCSSRuleSet, ruleSet: *RuleSet) !void {
+        try this.ruleSets.append(ruleSet);
+    }
+
+    fn getRules(this: *RuleSet, node: *Node, allocator: *Allocator) anyerror!ArrayList(Rule) {
+        var composite: *CompositeCSSRuleSet = @fieldParentPtr(CompositeCSSRuleSet, "ruleSet", this);
+        var rules: ArrayList(Rule) = ArrayList(Rule).init(allocator);
+
+        for (composite.ruleSets.items) |ruleSet, i| {
+            var ruleSetRules: ArrayList(Rule) = try ruleSet.getRules(node, allocator);
+            for (ruleSetRules.items) |rule| {
+                try rules.append(rule);
+            }
+            ruleSetRules.deinit();
+        }
+        return rules;
+    }
+
+    allocator: *Allocator,
+    ruleSets: ArrayList(*RuleSet),
+    ruleSet: RuleSet = RuleSet{
+        .getRulesFn = CompositeCSSRuleSet.getRules,
+        .deinitFn = CompositeCSSRuleSet.deinit,
+    },
 };
 
 test "CSS length" {

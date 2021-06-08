@@ -12,8 +12,7 @@ const Fonts = fonts.Fonts;
 const layout = @import("layout.zig");
 const Layout = layout.Layout;
 
-const startPage = @embedFile("startPage.html");
-const testPage = @embedFile("testPage.html");
+const welcomePage = @embedFile("welcomePage.html");
 
 var buf: [10_000_000]u8 = undefined;
 var fba = std.heap.FixedBufferAllocator.init(&buf);
@@ -41,11 +40,10 @@ pub fn main() anyerror!void {
 
     var screen: ZigrowserScreen = ZigrowserScreen.init();
 
-    // var startPageHtml = try Document.init(&fba.allocator, std.mem.spanZ(startPage));
-    var startPageHtml = try Document.init(&fba.allocator, std.mem.spanZ(testPage));
-    defer startPageHtml.deinit(&fba.allocator);
+    var welcomePageDocument = try Document.init(&fba.allocator, std.mem.spanZ(welcomePage));
+    defer welcomePageDocument.deinit(&fba.allocator);
 
-    const mainLayout = try Layout.init(&fba.allocator, screen.renderer.?, &theFonts, &startPageHtml.body.element.node, 0, 0, 640, 480);
+    const mainLayout = try Layout.init(&fba.allocator, screen.renderer.?, &theFonts, &welcomePageDocument.body.element.node, 0, 0, 640, 480);
 
     var done: bool = false;
     while (!done) {
@@ -60,4 +58,5 @@ pub fn main() anyerror!void {
         try screen.present();
         _ = c.SDL_Delay(20);
     }
+    _ = c.SDL_Quit();
 }
