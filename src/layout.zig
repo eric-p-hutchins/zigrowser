@@ -161,7 +161,7 @@ pub const Layout = struct {
                     const image: ?*c.SDL_Surface = c.IMG_Load(new_path_c);
                     if (image == null) {
                         const err: [*c]const u8 = c.IMG_GetError();
-                        std.log.info("{}", .{std.mem.span(err)});
+                        std.log.info("{any}", .{std.mem.span(err)});
                     } else {
                         texture = c.SDL_CreateTextureFromSurface(renderer, image);
                         if (texture == null) {

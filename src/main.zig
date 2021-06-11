@@ -33,7 +33,7 @@ pub fn main() anyerror!void {
     var flags = c.IMG_Init(c.IMG_INIT_PNG);
     if (flags != c.IMG_INIT_PNG) {
         const err: [*c]const u8 = c.IMG_GetError();
-        std.log.info("{}", .{std.mem.span(err)});
+        std.log.info("{any}", .{std.mem.span(err)});
     }
 
     var theFonts: Fonts = try Fonts.init(&fba.allocator);

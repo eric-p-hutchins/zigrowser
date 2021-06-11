@@ -261,7 +261,7 @@ test "CSS length" {
         },
         else => {},
     }
-    expectEqual(true, isIt8Pixels);
+    try expectEqual(true, isIt8Pixels);
 }
 
 test "CSS color" {
@@ -292,7 +292,7 @@ test "CSS color" {
         },
         else => {},
     }
-    expectEqual(true, isItWhite);
+    try expectEqual(true, isItWhite);
 }
 
 test "CSS text-align" {
@@ -303,7 +303,7 @@ test "CSS text-align" {
         },
     };
 
-    expectEqual(true, switch (rule.value) {
+    try expectEqual(true, switch (rule.value) {
         CSSDataType.textAlign => |textAlign| if (textAlign == CSSTextAlign.center) true else false,
         else => false,
     });

@@ -22,7 +22,7 @@ pub const ZigrowserScreen = struct {
         var window: ?*c.SDL_Window = null;
         var renderer: ?*c.SDL_Renderer = null;
         if (c.SDL_CreateWindowAndRenderer(@intCast(c_int, width), @intCast(c_int, height), c.SDL_WINDOW_ALLOW_HIGHDPI, &window, &renderer) != 0) {
-            std.log.err("Error creating window: {}", .{std.mem.span(c.SDL_GetError())});
+            std.log.err("Error creating window: {any}", .{std.mem.span(c.SDL_GetError())});
             c.SDL_Quit();
             std.process.exit(1);
         }

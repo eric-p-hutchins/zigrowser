@@ -51,8 +51,8 @@ pub fn deinit(self: *EventTarget) void {
     var iterator = self.listeners.iterator();
     var item = iterator.next();
     while (item != null) {
-        item.?.value.deinit();
-        self.allocator.destroy(item.?.value);
+        item.?.value_ptr.*.deinit();
+        self.allocator.destroy(item.?.value_ptr.*);
         item = iterator.next();
     }
     self.listeners.deinit();
@@ -98,5 +98,5 @@ test "Event Listener Test" {
     const dispatchResult = try eventTarget.dispatchEvent(&mySampleEvent);
 
     // The value is now 5
-    expectEqual(@intCast(i32, 5), value);
+    try expectEqual(@intCast(i32, 5), value);
 }

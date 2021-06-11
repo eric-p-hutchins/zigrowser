@@ -195,8 +195,8 @@ test "A simple body with just text inside has correct innerText and a text child
     );
     defer htmlElement.free(testing.allocator);
 
-    expect(std.mem.eql(u8, "Welcome to Zigrowser.", htmlElement.innerText));
-    expectEqual(@intCast(usize, 1), htmlElement.element.node.childNodes.items.len);
+    try expect(std.mem.eql(u8, "Welcome to Zigrowser.", htmlElement.innerText));
+    try expectEqual(@intCast(usize, 1), htmlElement.element.node.childNodes.items.len);
 }
 
 test "An HTML element" {
@@ -209,5 +209,5 @@ test "An HTML element" {
     );
     defer htmlElement.free(testing.allocator);
 
-    expectEqual(@intCast(usize, 3), htmlElement.element.node.childNodes.items.len);
+    try expectEqual(@intCast(usize, 3), htmlElement.element.node.childNodes.items.len);
 }

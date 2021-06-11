@@ -131,8 +131,8 @@ test "document initialization" {
     var document: *Document = try Document.init(testing.allocator, html);
     defer document.deinit(testing.allocator);
 
-    expect(document.node.isConnected);
-    expectEqualStrings("#document", document.node.nodeName);
+    try expect(document.node.isConnected);
+    try expectEqualStrings("#document", document.node.nodeName);
 }
 
 test "A simple page with just text in the body has correct innerText and a text child node" {
@@ -149,21 +149,21 @@ test "A simple page with just text in the body has correct innerText and a text 
     );
     defer document.deinit(testing.allocator);
 
-    expectEqualStrings("HEAD", document.head.element.node.nodeName);
-    expectEqual(@intCast(usize, 3), document.head.element.node.childNodes.items.len);
+    try expectEqualStrings("HEAD", document.head.element.node.nodeName);
+    try expectEqual(@intCast(usize, 3), document.head.element.node.childNodes.items.len);
 
-    expectEqual(@intCast(usize, 3), document.head.element.node.childNodes.items[0].*.nodeType);
-    expectEqualStrings("#text", document.head.element.node.childNodes.items[0].*.nodeName);
-    expectEqualStrings("\n        ", document.head.element.node.childNodes.items[0].*.textContent.?);
+    try expectEqual(@intCast(usize, 3), document.head.element.node.childNodes.items[0].*.nodeType);
+    try expectEqualStrings("#text", document.head.element.node.childNodes.items[0].*.nodeName);
+    try expectEqualStrings("\n        ", document.head.element.node.childNodes.items[0].*.textContent.?);
 
-    expectEqual(@intCast(usize, 1), document.head.element.node.childNodes.items[1].*.nodeType);
-    expectEqualStrings("TITLE", document.head.element.node.childNodes.items[1].*.nodeName);
-    expectEqualStrings("Welcome to Zigrowser", document.head.element.node.childNodes.items[1].*.childNodes.items[0].*.textContent.?);
+    try expectEqual(@intCast(usize, 1), document.head.element.node.childNodes.items[1].*.nodeType);
+    try expectEqualStrings("TITLE", document.head.element.node.childNodes.items[1].*.nodeName);
+    try expectEqualStrings("Welcome to Zigrowser", document.head.element.node.childNodes.items[1].*.childNodes.items[0].*.textContent.?);
 
-    expectEqual(@intCast(usize, 3), document.head.element.node.childNodes.items[2].*.nodeType);
-    expectEqualStrings("#text", document.head.element.node.childNodes.items[2].*.nodeName);
-    expectEqualStrings("\n    ", document.head.element.node.childNodes.items[2].*.textContent.?);
+    try expectEqual(@intCast(usize, 3), document.head.element.node.childNodes.items[2].*.nodeType);
+    try expectEqualStrings("#text", document.head.element.node.childNodes.items[2].*.nodeName);
+    try expectEqualStrings("\n    ", document.head.element.node.childNodes.items[2].*.textContent.?);
 
-    expect(std.mem.eql(u8, "Welcome to Zigrowser.", document.body.innerText));
-    expectEqual(@intCast(usize, 1), document.body.element.node.childNodes.items.len);
+    try expect(std.mem.eql(u8, "Welcome to Zigrowser.", document.body.innerText));
+    try expectEqual(@intCast(usize, 1), document.body.element.node.childNodes.items.len);
 }
