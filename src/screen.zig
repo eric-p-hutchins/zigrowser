@@ -10,21 +10,24 @@ const BoundingBox = bdf.BoundingBox;
 const FT_Face = c.FT_Face;
 const FT_Bitmap = c.FT_Bitmap;
 
+const ZigrowserInitializationError = error{
+    WindowOrRendererCreationError,
+};
+
 pub const ZigrowserScreen = struct {
     const This = @This();
     window: ?*c.SDL_Window,
     renderer: ?*c.SDL_Renderer,
     hiDPI: bool = false,
 
-    pub fn init() ZigrowserScreen {
+    pub fn init() !ZigrowserScreen {
         var width: u32 = 640;
         var height: u32 = 480;
         var window: ?*c.SDL_Window = null;
         var renderer: ?*c.SDL_Renderer = null;
         if (c.SDL_CreateWindowAndRenderer(@intCast(c_int, width), @intCast(c_int, height), c.SDL_WINDOW_ALLOW_HIGHDPI, &window, &renderer) != 0) {
             std.log.err("Error creating window: {any}", .{std.mem.span(c.SDL_GetError())});
-            c.SDL_Quit();
-            std.process.exit(1);
+            return error.WindowOrRendererCreationError;
         }
 
         c.SDL_ShowWindow(window);
@@ -133,7 +136,7 @@ pub const ZigrowserScreen = struct {
         defer arenaAllocator.deinit();
 
         _ = c.SDL_SetRenderDrawColor(this.renderer, r, g, b, c.SDL_ALPHA_OPAQUE);
-        for (font.chars) |char, i| {
+        for (font.chars.items) |char, i| {
             if (char.codePoint == codePoint) {
                 for (char.lines) |line, j| {
                     for (line) |byte, k| {

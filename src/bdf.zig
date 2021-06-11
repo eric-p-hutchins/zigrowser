@@ -22,11 +22,12 @@ const Error = error{CodePointNotFound};
 pub const BDFFont = struct {
     const This = @This();
 
+    allocator: *Allocator,
     boundingBox: BoundingBox,
-    chars: []BDFChar,
+    chars: ArrayList(BDFChar),
 
     pub fn getChar(this: This, codePoint: u8) !BDFChar {
-        for (this.chars) |char| {
+        for (this.chars.items) |char| {
             if (char.codePoint == codePoint) {
                 return char;
             }
@@ -236,8 +237,13 @@ pub const BDFFont = struct {
             }
         }
         return BDFFont{
+            .allocator = allocator,
             .boundingBox = fontBoundingBox,
-            .chars = charsList.items,
+            .chars = charsList,
         };
+    }
+
+    pub fn deinit(self: *BDFFont) void {
+        self.chars.deinit();
     }
 };

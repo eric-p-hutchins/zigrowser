@@ -37,23 +37,34 @@ pub fn loadFaceMemory(allocator: *Allocator, library: *FT_Library, memory: [*c]c
 }
 
 pub const Fonts = struct {
+    allocator: *Allocator,
     library: *FT_Library,
     fonts: ArrayList(*FT_Face),
     bdfFonts: ArrayList(*BDFFont),
 
     pub fn init(allocator: *Allocator) !Fonts {
         var bdfFonts = ArrayList(*BDFFont).init(allocator);
+        errdefer bdfFonts.deinit();
 
         try bdfFonts.append(try allocator.create(BDFFont));
         bdfFonts.items[0].* = try BDFFont.parse(allocator, std.mem.spanZ(glean));
+        errdefer bdfFonts.items[0].deinit();
+
         try bdfFonts.append(try allocator.create(BDFFont));
         bdfFonts.items[1].* = try BDFFont.parse(allocator, std.mem.spanZ(victor12));
+        errdefer bdfFonts.items[1].deinit();
+
         try bdfFonts.append(try allocator.create(BDFFont));
         bdfFonts.items[2].* = try BDFFont.parse(allocator, std.mem.spanZ(pressStart2P));
+        errdefer bdfFonts.items[2].deinit();
 
         var library: *FT_Library = try initFreeType(allocator);
         // var dejavuSansFace: *FT_Face = try loadFace(library, "DejaVuSans.ttf");
+        errdefer _ = c.FT_Done_FreeType(library.*);
+
         var fonts = ArrayList(*FT_Face).init(allocator);
+        errdefer fonts.deinit();
+
         var dejavuSansFace: *FT_Face = try loadFaceMemory(allocator, library, dejaVuEmbed, dejaVuEmbed.len);
 
         var errorCode = c.FT_Set_Char_Size(dejavuSansFace.*, 0, 16 * 64, 72, 72);
@@ -64,9 +75,16 @@ pub const Fonts = struct {
         try fonts.append(dejavuSansFace);
 
         return Fonts{
+            .allocator = allocator,
             .library = library,
             .fonts = fonts,
             .bdfFonts = bdfFonts,
         };
+    }
+
+    pub fn deinit(self: *Fonts) void {
+        self.fonts.deinit();
+        self.bdfFonts.deinit();
+        _ = c.FT_Done_FreeType(self.library.*);
     }
 };

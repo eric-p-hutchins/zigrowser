@@ -15,7 +15,8 @@ const Layout = layout.Layout;
 const welcomePage = @embedFile("welcomePage.html");
 
 var buf: [10_000_000]u8 = undefined;
-var fba = std.heap.FixedBufferAllocator.init(&buf);
+const GeneralPurposeAllocator = std.heap.GeneralPurposeAllocator(.{});
+var gpa = GeneralPurposeAllocator{};
 
 const Error = error{FreeTypeInitializationError};
 
@@ -25,7 +26,7 @@ pub fn main() anyerror!void {
     std.log.info("Welcome to Zigrowser.", .{});
 
     if (c.SDL_Init(c.SDL_INIT_VIDEO) != 0) {
-        std.log.err("Error initializing", .{});
+        std.log.err("Error initializing SDL: {any}", .{std.mem.span(c.SDL_GetError())});
         std.process.exit(1);
     }
     defer c.SDL_Quit();
@@ -33,17 +34,19 @@ pub fn main() anyerror!void {
     var flags = c.IMG_Init(c.IMG_INIT_PNG);
     if (flags != c.IMG_INIT_PNG) {
         const err: [*c]const u8 = c.IMG_GetError();
-        std.log.info("{any}", .{std.mem.span(err)});
+        std.log.info("Error initializing SDL_image: {any}", .{std.mem.span(err)});
     }
+    defer c.IMG_Quit();
 
-    var theFonts: Fonts = try Fonts.init(&fba.allocator);
+    var theFonts: Fonts = try Fonts.init(&gpa.allocator);
+    defer theFonts.deinit();
 
-    var screen: ZigrowserScreen = ZigrowserScreen.init();
+    var screen: ZigrowserScreen = try ZigrowserScreen.init();
 
-    var welcomePageDocument = try Document.init(&fba.allocator, std.mem.spanZ(welcomePage));
-    defer welcomePageDocument.deinit(&fba.allocator);
+    var welcomePageDocument = try Document.init(&gpa.allocator, std.mem.spanZ(welcomePage));
+    defer welcomePageDocument.deinit(&gpa.allocator);
 
-    const mainLayout = try Layout.init(&fba.allocator, screen.renderer.?, &theFonts, &welcomePageDocument.body.element.node, 0, 0, 640, 480);
+    const mainLayout = try Layout.init(&gpa.allocator, screen.renderer.?, &theFonts, &welcomePageDocument.body.element.node, 0, 0, 640, 480);
 
     var done: bool = false;
     while (!done) {
@@ -58,5 +61,4 @@ pub fn main() anyerror!void {
         try screen.present();
         _ = c.SDL_Delay(20);
     }
-    _ = c.SDL_Quit();
 }
