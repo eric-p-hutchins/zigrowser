@@ -119,9 +119,9 @@ pub fn init(allocator: *Allocator, string: []const u8) !*Document {
 
 pub fn deinit(self: *Document, allocator: *Allocator) void {
     if (self.doctypeElement != null) {
-        self.doctypeElement.?.free(allocator);
+        self.doctypeElement.?.deinit();
     }
-    self.htmlElement.free(allocator);
+    self.htmlElement.deinit();
     self.cssRuleSet.deinit();
     allocator.destroy(self);
 }

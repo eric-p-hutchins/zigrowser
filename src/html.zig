@@ -17,29 +17,29 @@ pub const Text = struct {
 pub const HTMLElement = struct {
     const This = @This();
 
+    allocator: *Allocator,
     element: Element,
-
     innerText: []u8,
 
-    pub fn free(this: *This, allocator: *Allocator) void {
-        allocator.free(this.innerText);
-        allocator.free(this.element.node.nodeName);
-        allocator.free(this.element.outerHTML);
+    pub fn deinit(this: *This) void {
+        this.allocator.free(this.innerText);
+        this.allocator.free(this.element.node.nodeName);
+        this.allocator.free(this.element.outerHTML);
         for (this.element.node.childNodes.items) |item| {
             if (item.nodeType == 1) {
                 var element: *Element = @fieldParentPtr(Element, "node", item);
                 var htmlElement: *HTMLElement = @fieldParentPtr(HTMLElement, "element", element);
-                htmlElement.free(allocator);
+                htmlElement.deinit();
             } else if (item.nodeType == 3) {
-                allocator.free(item.nodeName);
-                allocator.free(item.textContent.?);
+                this.allocator.free(item.nodeName);
+                this.allocator.free(item.textContent.?);
                 var textObj: *Text = @fieldParentPtr(Text, "node", item);
                 textObj.node.childNodes.deinit();
-                allocator.destroy(textObj);
+                this.allocator.destroy(textObj);
             }
         }
         this.element.node.childNodes.deinit();
-        allocator.destroy(this);
+        this.allocator.destroy(this);
     }
 
     pub fn parseText(allocator: *Allocator, file: []const u8) !?Text {
@@ -166,6 +166,7 @@ pub const HTMLElement = struct {
 
         var elementMemory = try allocator.create(HTMLElement);
         elementMemory.* = HTMLElement{
+            .allocator = allocator,
             .element = Element{
                 .node = Node{
                     .eventTarget = try EventTarget.init(allocator),
@@ -193,7 +194,7 @@ test "A simple body with just text inside has correct innerText and a text child
         \\        Welcome to Zigrowser.
         \\    </body>
     );
-    defer htmlElement.free(testing.allocator);
+    defer htmlElement.deinit();
 
     try expect(std.mem.eql(u8, "Welcome to Zigrowser.", htmlElement.innerText));
     try expectEqual(@intCast(usize, 1), htmlElement.element.node.childNodes.items.len);
@@ -207,7 +208,7 @@ test "An HTML element" {
         \\    </body>
         \\</html>
     );
-    defer htmlElement.free(testing.allocator);
+    defer htmlElement.deinit();
 
     try expectEqual(@intCast(usize, 3), htmlElement.element.node.childNodes.items.len);
 }
