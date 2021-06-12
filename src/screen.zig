@@ -3,49 +3,49 @@ const std = @import("std");
 const c = @import("c.zig");
 
 const bdf = @import("bdf.zig");
-const BDFFont = bdf.BDFFont;
-const BDFChar = bdf.BDFChar;
+const BdfFont = bdf.BdfFont;
+const BdfChar = bdf.BdfChar;
 const BoundingBox = bdf.BoundingBox;
 
 const FT_Face = c.FT_Face;
 const FT_Bitmap = c.FT_Bitmap;
 
-const ZigrowserInitializationError = error{
+const Error = error{
     WindowOrRendererCreationError,
 };
 
-pub const ZigrowserScreen = struct {
+pub const Screen = struct {
     const This = @This();
-    window: ?*c.SDL_Window,
-    renderer: ?*c.SDL_Renderer,
-    hiDPI: bool = false,
+    window: *c.SDL_Window,
+    renderer: *c.SDL_Renderer,
+    hiDpi: bool = false,
 
-    pub fn init() !ZigrowserScreen {
-        var width: u32 = 640;
-        var height: u32 = 480;
+    pub fn init() !Screen {
+        const width: c_int = 640;
+        const height: c_int = 480;
         var window: ?*c.SDL_Window = null;
         var renderer: ?*c.SDL_Renderer = null;
-        if (c.SDL_CreateWindowAndRenderer(@intCast(c_int, width), @intCast(c_int, height), c.SDL_WINDOW_ALLOW_HIGHDPI, &window, &renderer) != 0) {
-            std.log.err("Error creating window: {any}", .{std.mem.span(c.SDL_GetError())});
+        if (c.SDL_CreateWindowAndRenderer(width, height, c.SDL_WINDOW_ALLOW_HIGHDPI, &window, &renderer) != 0) {
+            std.log.err("Error creating window or renderer: {any}", .{std.mem.span(c.SDL_GetError())});
             return error.WindowOrRendererCreationError;
         }
 
         c.SDL_ShowWindow(window);
 
-        var hiDPITest: bool = false;
+        var hiDpi: bool = false;
 
         var w: c_int = 0;
         var h: c_int = 0;
         c.SDL_GL_GetDrawableSize(window, &w, &h);
 
         if (w == width * 2) {
-            hiDPITest = true;
+            hiDpi = true;
         }
 
-        return ZigrowserScreen{
-            .window = window,
-            .renderer = renderer,
-            .hiDPI = hiDPITest,
+        return Screen{
+            .window = window.?,
+            .renderer = renderer.?,
+            .hiDpi = hiDpi,
         };
     }
 
@@ -75,12 +75,12 @@ pub const ZigrowserScreen = struct {
                 var rect: *c.SDL_Rect = try arenaAllocator.allocator.create(c.SDL_Rect);
                 rect.*.x = @intCast(c_int, x) + @intCast(c_int, j);
                 rect.*.y = @intCast(c_int, y) + @intCast(c_int, i);
-                if (this.hiDPI) {
+                if (this.hiDpi) {
                     rect.*.x *= 2;
                     rect.*.y *= 2;
                 }
-                rect.*.w = if (this.hiDPI) 2 else 1;
-                rect.*.h = if (this.hiDPI) 2 else 1;
+                rect.*.w = if (this.hiDpi) 2 else 1;
+                rect.*.h = if (this.hiDpi) 2 else 1;
                 _ = c.SDL_RenderDrawRect(this.renderer, rect);
             }
             ptr = @intToPtr([*c]u8, @ptrToInt(ptr) + @intCast(usize, pitch));
@@ -95,20 +95,20 @@ pub const ZigrowserScreen = struct {
         var rect: *c.SDL_Rect = try arenaAllocator.allocator.create(c.SDL_Rect);
         rect.*.x = @intCast(c_int, x);
         rect.*.y = @intCast(c_int, y);
-        if (this.hiDPI) {
+        if (this.hiDpi) {
             rect.*.x *= 2;
             rect.*.y *= 2;
         }
-        rect.*.w = if (this.hiDPI) @intCast(c_int, w * 2) else @intCast(c_int, w);
-        rect.*.h = if (this.hiDPI) @intCast(c_int, h * 2) else @intCast(c_int, h);
+        rect.*.w = if (this.hiDpi) @intCast(c_int, w * 2) else @intCast(c_int, w);
+        rect.*.h = if (this.hiDpi) @intCast(c_int, h * 2) else @intCast(c_int, h);
         _ = c.SDL_RenderFillRect(this.renderer, rect);
     }
 
-    pub fn drawString(this: This, font: *BDFFont, string: []const u8, x: i32, y: i32, r: u8, g: u8, b: u8) !void {
+    pub fn drawString(this: This, font: *BdfFont, string: []const u8, x: i32, y: i32, r: u8, g: u8, b: u8) !void {
         var currentX: i32 = x;
         var originY: i32 = y + @intCast(i32, font.boundingBox.height);
         for (string) |byte, i| {
-            const char: BDFChar = font.getChar(byte) catch try font.getChar(' ');
+            const char: BdfChar = font.getChar(byte) catch try font.getChar(' ');
             const boundingBox: BoundingBox = char.boundingBox orelse font.boundingBox;
             const charX = @intCast(i32, currentX) + boundingBox.xOff;
             const charY = originY - @intCast(i32, boundingBox.height) - boundingBox.yOff;
@@ -131,7 +131,7 @@ pub const ZigrowserScreen = struct {
         }
     }
 
-    pub fn drawChar(this: This, font: *BDFFont, codePoint: u8, x: i32, y: i32, r: u8, g: u8, b: u8) !void {
+    pub fn drawChar(this: This, font: *BdfFont, codePoint: u8, x: i32, y: i32, r: u8, g: u8, b: u8) !void {
         var arenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
         defer arenaAllocator.deinit();
 
@@ -144,12 +144,12 @@ pub const ZigrowserScreen = struct {
                             var rect: *c.SDL_Rect = try arenaAllocator.allocator.create(c.SDL_Rect);
                             rect.*.x = @intCast(c_int, k) + @intCast(c_int, x);
                             rect.*.y = @intCast(c_int, j) + @intCast(c_int, y);
-                            if (this.hiDPI) {
+                            if (this.hiDpi) {
                                 rect.*.x *= 2;
                                 rect.*.y *= 2;
                             }
-                            rect.*.w = if (this.hiDPI) 2 else 1;
-                            rect.*.h = if (this.hiDPI) 2 else 1;
+                            rect.*.w = if (this.hiDpi) 2 else 1;
+                            rect.*.h = if (this.hiDpi) 2 else 1;
                             _ = c.SDL_RenderDrawRect(this.renderer, rect);
                         }
                     }

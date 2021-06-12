@@ -6,19 +6,19 @@ const EventTarget = @import("eventtarget.zig");
 const Node = @import("node.zig");
 const Element = @import("element.zig");
 
-const HTMLElement = @import("html.zig").HTMLElement;
+const HtmlElement = @import("html.zig").HtmlElement;
 
-const CSSRuleSet = @import("css.zig").RuleSet;
-const CSSRule = @import("css.zig").Rule;
-const CSSValue = @import("css.zig").CSSValue;
-const CSSColor = @import("css.zig").CSSColor;
-const CSSRGBAColor = @import("css.zig").CSSRGBAColor;
-const CSSLengthType = @import("css.zig").CSSLengthType;
-const CSSLengthUnit = @import("css.zig").CSSLengthUnit;
+const CssRuleSet = @import("css.zig").RuleSet;
+const CssRule = @import("css.zig").Rule;
+const CssValue = @import("css.zig").CssValue;
+const CssColor = @import("css.zig").CssColor;
+const CssRGBAColor = @import("css.zig").CssRGBAColor;
+const CssLengthType = @import("css.zig").CssLengthType;
+const CssLengthUnit = @import("css.zig").CssLengthUnit;
 
-const UserAgentCSSRuleSet = @import("css.zig").UserAgentCSSRuleSet;
-const GenericCSSRuleSet = @import("css.zig").GenericCSSRuleSet;
-const CompositeCSSRuleSet = @import("css.zig").CompositeCSSRuleSet;
+const UserAgentCssRuleSet = @import("css.zig").UserAgentCssRuleSet;
+const GenericCssRuleSet = @import("css.zig").GenericCssRuleSet;
+const CompositeCssRuleSet = @import("css.zig").CompositeCssRuleSet;
 
 const Document = @This();
 
@@ -27,15 +27,15 @@ const expect = std.testing.expect;
 const expectEqual = std.testing.expectEqual;
 const expectEqualStrings = std.testing.expectEqualStrings;
 
-doctypeElement: ?*HTMLElement,
-htmlElement: *HTMLElement,
+doctypeElement: ?*HtmlElement,
+htmlElement: *HtmlElement,
 
 node: Node,
 
-head: *HTMLElement,
-body: *HTMLElement,
+head: *HtmlElement,
+body: *HtmlElement,
 
-cssRuleSet: *CSSRuleSet,
+cssRuleSet: *CssRuleSet,
 
 fn findStyleElements(allocator: *Allocator, node: *Node) anyerror![]*const Node {
     var nodes: ArrayList(*const Node) = ArrayList(*const Node).init(allocator);
@@ -57,43 +57,43 @@ fn findStyleElements(allocator: *Allocator, node: *Node) anyerror![]*const Node 
 pub fn init(allocator: *Allocator, string: []const u8) !*Document {
     var inTag: bool = false;
     var tagStart: u32 = 0;
-    var doctypeElement: ?*HTMLElement = null;
-    var documentElement: ?*HTMLElement = null;
-    var head: ?*HTMLElement = null;
-    var body: ?*HTMLElement = null;
-    documentElement = try HTMLElement.parse(allocator, string);
+    var doctypeElement: ?*HtmlElement = null;
+    var documentElement: ?*HtmlElement = null;
+    var head: ?*HtmlElement = null;
+    var body: ?*HtmlElement = null;
+    documentElement = try HtmlElement.parse(allocator, string);
     if (documentElement != null and documentElement.?.element.node.nodeType == 10) {
         doctypeElement = documentElement;
-        documentElement = try HTMLElement.parse(allocator, string[documentElement.?.element.outerHTML.len..]);
+        documentElement = try HtmlElement.parse(allocator, string[documentElement.?.element.outerHTML.len..]);
     }
     if (documentElement != null) {
         for (documentElement.?.element.node.childNodes.items) |node| {
             if (std.mem.eql(u8, "HEAD", node.nodeName)) {
                 var headElement: *Element = @fieldParentPtr(Element, "node", node);
-                var headHtmlElement: *HTMLElement = @fieldParentPtr(HTMLElement, "element", headElement);
+                var headHtmlElement: *HtmlElement = @fieldParentPtr(HtmlElement, "element", headElement);
                 head = headHtmlElement;
             }
             if (std.mem.eql(u8, "BODY", node.nodeName)) {
                 var bodyElement: *Element = @fieldParentPtr(Element, "node", node);
-                var bodyHtmlElement: *HTMLElement = @fieldParentPtr(HTMLElement, "element", bodyElement);
+                var bodyHtmlElement: *HtmlElement = @fieldParentPtr(HtmlElement, "element", bodyElement);
                 body = bodyHtmlElement;
             }
         }
     }
 
-    var ruleSet: *CompositeCSSRuleSet = try allocator.create(CompositeCSSRuleSet);
-    ruleSet.* = try CompositeCSSRuleSet.init(allocator);
+    var ruleSet: *CompositeCssRuleSet = try allocator.create(CompositeCssRuleSet);
+    ruleSet.* = try CompositeCssRuleSet.init(allocator);
 
-    var userAgentRuleSet = try allocator.create(UserAgentCSSRuleSet);
-    userAgentRuleSet.* = UserAgentCSSRuleSet{};
+    var userAgentRuleSet = try allocator.create(UserAgentCssRuleSet);
+    userAgentRuleSet.* = UserAgentCssRuleSet{};
     try ruleSet.addRuleSet(&userAgentRuleSet.ruleSet);
 
     const styleElements = try findStyleElements(allocator, &documentElement.?.element.node);
 
     for (styleElements) |styleNode| {
         // TODO: Actually get this from parsing the style element
-        var genericRuleSet = try allocator.create(GenericCSSRuleSet);
-        genericRuleSet.* = GenericCSSRuleSet{};
+        var genericRuleSet = try allocator.create(GenericCssRuleSet);
+        genericRuleSet.* = GenericCssRuleSet{};
         try ruleSet.addRuleSet(&genericRuleSet.ruleSet);
     }
 

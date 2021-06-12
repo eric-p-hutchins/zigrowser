@@ -14,7 +14,7 @@ pub const Text = struct {
     node: Node,
 };
 
-pub const HTMLElement = struct {
+pub const HtmlElement = struct {
     const This = @This();
 
     allocator: *Allocator,
@@ -28,7 +28,7 @@ pub const HTMLElement = struct {
         for (this.element.node.childNodes.items) |item| {
             if (item.nodeType == 1) {
                 var element: *Element = @fieldParentPtr(Element, "node", item);
-                var htmlElement: *HTMLElement = @fieldParentPtr(HTMLElement, "element", element);
+                var htmlElement: *HtmlElement = @fieldParentPtr(HtmlElement, "element", element);
                 htmlElement.deinit();
             } else if (item.nodeType == 3) {
                 this.allocator.free(item.nodeName);
@@ -65,7 +65,7 @@ pub const HTMLElement = struct {
         };
     }
 
-    pub fn parse(allocator: *Allocator, file: []const u8) anyerror!*HTMLElement {
+    pub fn parse(allocator: *Allocator, file: []const u8) anyerror!*HtmlElement {
         var hasSpace: bool = false;
         var text: ArrayList(u8) = ArrayList(u8).init(allocator);
         defer text.deinit();
@@ -91,7 +91,7 @@ pub const HTMLElement = struct {
                             }
                             break;
                         } else {
-                            var element: *HTMLElement = try parse(allocator, file[i..]);
+                            var element: *HtmlElement = try parse(allocator, file[i..]);
                             for (element.element.outerHTML) |insideElementByte| {
                                 try outerHTML.append(insideElementByte);
                             }
@@ -164,8 +164,8 @@ pub const HTMLElement = struct {
             }
         }
 
-        var elementMemory = try allocator.create(HTMLElement);
-        elementMemory.* = HTMLElement{
+        var elementMemory = try allocator.create(HtmlElement);
+        elementMemory.* = HtmlElement{
             .allocator = allocator,
             .element = Element{
                 .node = Node{
@@ -189,7 +189,7 @@ pub const HTMLElement = struct {
 };
 
 test "A simple body with just text inside has correct innerText and a text child node" {
-    var htmlElement: *HTMLElement = try HTMLElement.parse(testing.allocator,
+    var htmlElement: *HtmlElement = try HtmlElement.parse(testing.allocator,
         \\    <body>
         \\        Welcome to Zigrowser.
         \\    </body>
@@ -201,7 +201,7 @@ test "A simple body with just text inside has correct innerText and a text child
 }
 
 test "An HTML element" {
-    var htmlElement: *HTMLElement = try HTMLElement.parse(testing.allocator,
+    var htmlElement: *HtmlElement = try HtmlElement.parse(testing.allocator,
         \\<html>
         \\    <body>
         \\        Welcome to Zigrowser.

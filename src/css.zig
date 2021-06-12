@@ -6,60 +6,60 @@ const expectEqual = testing.expectEqual;
 
 const Node = @import("node.zig");
 
-pub const CSSDataType = enum {
+pub const CssDataType = enum {
     length,
     color,
     textAlign,
 };
 
-pub const CSSLengthUnit = enum {
+pub const CssLengthUnit = enum {
     percent,
     px,
 };
 
-pub const CSSColorKeyword = enum {
+pub const CssColorKeyword = enum {
     white,
 };
 
 // Percentages or float values like 50% or 0.5 should be mapped to u8 values (50% = 0x80, 0.25 = 0x40). alpha
 // should default to 0xFF when unspecified by the CSS source
 // Keywords also need to be mapped so that 'white' comes in as .{ .r = 255, .g = 255, .b = 255, .a = 255 }
-pub const CSSRGBAColor = struct {
+pub const CssRGBAColor = struct {
     r: u8,
     g: u8,
     b: u8,
     a: u8,
 };
 
-pub const CSSTextAlign = enum {
+pub const CssTextAlign = enum {
     left,
     right,
     center,
 };
 
-pub const CSSColor = union(enum) {
-    rgba: CSSRGBAColor,
+pub const CssColor = union(enum) {
+    rgba: CssRGBAColor,
 };
 
-pub const CSSNumber = union(enum) {
+pub const CssNumber = union(enum) {
     int: i64,
     float: f64,
 };
 
-pub const CSSLengthType = struct {
-    value: CSSNumber,
-    unit: CSSLengthUnit,
+pub const CssLengthType = struct {
+    value: CssNumber,
+    unit: CssLengthUnit,
 };
 
-pub const CSSValue = union(CSSDataType) {
-    length: CSSLengthType,
-    color: CSSColor,
-    textAlign: CSSTextAlign,
+pub const CssValue = union(CssDataType) {
+    length: CssLengthType,
+    color: CssColor,
+    textAlign: CssTextAlign,
 };
 
 pub const Rule = struct {
     property: []const u8,
-    value: CSSValue,
+    value: CssValue,
 };
 
 pub const RuleSet = struct {
@@ -79,7 +79,7 @@ pub const RuleSet = struct {
     }
 };
 
-pub const UserAgentCSSRuleSet = struct {
+pub const UserAgentCssRuleSet = struct {
     fn getRules(this: *RuleSet, node: *Node, allocator: *Allocator) anyerror!ArrayList(Rule) {
 
         // TODO: Make this better somehow... it's really ugly
@@ -89,37 +89,37 @@ pub const UserAgentCSSRuleSet = struct {
         if (std.mem.eql(u8, "BODY", node.nodeName)) {
             try rules.append(Rule{
                 .property = "margin-top",
-                .value = CSSValue{
-                    .length = CSSLengthType{
+                .value = CssValue{
+                    .length = CssLengthType{
                         .value = .{ .int = 8 },
-                        .unit = CSSLengthUnit.px,
+                        .unit = CssLengthUnit.px,
                     },
                 },
             });
             try rules.append(Rule{
                 .property = "margin-left",
-                .value = CSSValue{
-                    .length = CSSLengthType{
+                .value = CssValue{
+                    .length = CssLengthType{
                         .value = .{ .int = 8 },
-                        .unit = CSSLengthUnit.px,
+                        .unit = CssLengthUnit.px,
                     },
                 },
             });
             try rules.append(Rule{
                 .property = "margin-bottom",
-                .value = CSSValue{
-                    .length = CSSLengthType{
+                .value = CssValue{
+                    .length = CssLengthType{
                         .value = .{ .int = 8 },
-                        .unit = CSSLengthUnit.px,
+                        .unit = CssLengthUnit.px,
                     },
                 },
             });
             try rules.append(Rule{
                 .property = "margin-right",
-                .value = CSSValue{
-                    .length = CSSLengthType{
+                .value = CssValue{
+                    .length = CssLengthType{
                         .value = .{ .int = 8 },
-                        .unit = CSSLengthUnit.px,
+                        .unit = CssLengthUnit.px,
                     },
                 },
             });
@@ -132,11 +132,11 @@ pub const UserAgentCSSRuleSet = struct {
     },
 };
 
-pub const GenericCSSRuleSet = struct {
+pub const GenericCssRuleSet = struct {
     fn getRules(this: *RuleSet, node: *Node, allocator: *Allocator) anyerror!ArrayList(Rule) {
         var rules: ArrayList(Rule) = ArrayList(Rule).init(allocator);
 
-        // TODO: Don't put this here but give functions to GenericCSSRuleSet that allow the rules to be added
+        // TODO: Don't put this here but give functions to GenericCssRuleSet that allow the rules to be added
         //
         // body { background-color: #131315; color: white }
         //
@@ -157,9 +157,9 @@ pub const GenericCSSRuleSet = struct {
         if (descendentOfBody) {
             try rules.append(Rule{
                 .property = "background-color",
-                .value = CSSValue{
-                    .color = CSSColor{
-                        .rgba = CSSRGBAColor{
+                .value = CssValue{
+                    .color = CssColor{
+                        .rgba = CssRGBAColor{
                             .r = 19,
                             .g = 19,
                             .b = 21,
@@ -170,9 +170,9 @@ pub const GenericCSSRuleSet = struct {
             });
             try rules.append(Rule{
                 .property = "color",
-                .value = CSSValue{
-                    .color = CSSColor{
-                        .rgba = CSSRGBAColor{
+                .value = CssValue{
+                    .color = CssColor{
+                        .rgba = CssRGBAColor{
                             .r = 255,
                             .g = 255,
                             .b = 255,
@@ -190,16 +190,16 @@ pub const GenericCSSRuleSet = struct {
     },
 };
 
-pub const CompositeCSSRuleSet = struct {
-    pub fn init(allocator: *Allocator) !CompositeCSSRuleSet {
-        return CompositeCSSRuleSet{
+pub const CompositeCssRuleSet = struct {
+    pub fn init(allocator: *Allocator) !CompositeCssRuleSet {
+        return CompositeCssRuleSet{
             .allocator = allocator,
             .ruleSets = ArrayList(*RuleSet).init(allocator),
         };
     }
 
     pub fn deinit(this: *RuleSet) void {
-        var composite: *CompositeCSSRuleSet = @fieldParentPtr(CompositeCSSRuleSet, "ruleSet", this);
+        var composite: *CompositeCssRuleSet = @fieldParentPtr(CompositeCssRuleSet, "ruleSet", this);
         for (composite.ruleSets.items) |ruleSet, i| {
             composite.allocator.destroy(ruleSet);
         }
@@ -207,12 +207,12 @@ pub const CompositeCSSRuleSet = struct {
         composite.allocator.destroy(composite);
     }
 
-    pub fn addRuleSet(this: *CompositeCSSRuleSet, ruleSet: *RuleSet) !void {
+    pub fn addRuleSet(this: *CompositeCssRuleSet, ruleSet: *RuleSet) !void {
         try this.ruleSets.append(ruleSet);
     }
 
     fn getRules(this: *RuleSet, node: *Node, allocator: *Allocator) anyerror!ArrayList(Rule) {
-        var composite: *CompositeCSSRuleSet = @fieldParentPtr(CompositeCSSRuleSet, "ruleSet", this);
+        var composite: *CompositeCssRuleSet = @fieldParentPtr(CompositeCssRuleSet, "ruleSet", this);
         var rules: ArrayList(Rule) = ArrayList(Rule).init(allocator);
 
         for (composite.ruleSets.items) |ruleSet, i| {
@@ -228,33 +228,33 @@ pub const CompositeCSSRuleSet = struct {
     allocator: *Allocator,
     ruleSets: ArrayList(*RuleSet),
     ruleSet: RuleSet = RuleSet{
-        .getRulesFn = CompositeCSSRuleSet.getRules,
-        .deinitFn = CompositeCSSRuleSet.deinit,
+        .getRulesFn = CompositeCssRuleSet.getRules,
+        .deinitFn = CompositeCssRuleSet.deinit,
     },
 };
 
 test "CSS length" {
     const rule: Rule = Rule{
         .property = "margin-top",
-        .value = CSSValue{
-            .length = CSSLengthType{
+        .value = CssValue{
+            .length = CssLengthType{
                 .value = .{ .int = 8 },
-                .unit = CSSLengthUnit.px,
+                .unit = CssLengthUnit.px,
             },
         },
     };
 
     var isIt8Pixels: bool = false;
     switch (rule.value) {
-        CSSDataType.length => |length| {
+        CssDataType.length => |length| {
             switch (length.unit) {
-                CSSLengthUnit.percent => {},
-                CSSLengthUnit.px => {
+                CssLengthUnit.percent => {},
+                CssLengthUnit.px => {
                     switch (length.value) {
-                        CSSNumber.int => |int_length| if (int_length == 8) {
+                        CssNumber.int => |int_length| if (int_length == 8) {
                             isIt8Pixels = true;
                         },
-                        CSSNumber.float => |float_length| {},
+                        CssNumber.float => |float_length| {},
                     }
                 },
             }
@@ -267,9 +267,9 @@ test "CSS length" {
 test "CSS color" {
     const rule: Rule = Rule{
         .property = "background-color",
-        .value = CSSValue{
-            .color = CSSColor{
-                .rgba = CSSRGBAColor{
+        .value = CssValue{
+            .color = CssColor{
+                .rgba = CssRGBAColor{
                     .r = 255,
                     .g = 255,
                     .b = 255,
@@ -281,9 +281,9 @@ test "CSS color" {
 
     var isItWhite: bool = false;
     switch (rule.value) {
-        CSSDataType.color => |color| {
+        CssDataType.color => |color| {
             switch (color) {
-                CSSColor.rgba => |rgba| {
+                CssColor.rgba => |rgba| {
                     if (rgba.r == 255 and rgba.g == 255 and rgba.b == 255 and rgba.a == 255) {
                         isItWhite = true;
                     }
@@ -298,13 +298,13 @@ test "CSS color" {
 test "CSS text-align" {
     const rule: Rule = Rule{
         .property = "text-align",
-        .value = CSSValue{
-            .textAlign = CSSTextAlign.center,
+        .value = CssValue{
+            .textAlign = CssTextAlign.center,
         },
     };
 
     try expectEqual(true, switch (rule.value) {
-        CSSDataType.textAlign => |textAlign| if (textAlign == CSSTextAlign.center) true else false,
+        CssDataType.textAlign => |textAlign| if (textAlign == CssTextAlign.center) true else false,
         else => false,
     });
 }

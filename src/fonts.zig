@@ -5,9 +5,7 @@ const ArrayList = std.ArrayList;
 const c = @import("c.zig");
 
 const bdf = @import("bdf.zig");
-const BDFFont = bdf.BDFFont;
-const BDFChar = bdf.BDFChar;
-const BoundingBox = bdf.BoundingBox;
+const BdfFont = bdf.BdfFont;
 
 const glean = @embedFile("glean-5-10.bdf");
 const pressStart2P = @embedFile("PressStart2P-16.bdf");
@@ -40,22 +38,22 @@ pub const Fonts = struct {
     allocator: *Allocator,
     library: *FT_Library,
     fonts: ArrayList(*FT_Face),
-    bdfFonts: ArrayList(*BDFFont),
+    bdfFonts: ArrayList(*BdfFont),
 
     pub fn init(allocator: *Allocator) !Fonts {
-        var bdfFonts = ArrayList(*BDFFont).init(allocator);
+        var bdfFonts = ArrayList(*BdfFont).init(allocator);
         errdefer bdfFonts.deinit();
 
-        try bdfFonts.append(try allocator.create(BDFFont));
-        bdfFonts.items[0].* = try BDFFont.parse(allocator, std.mem.spanZ(glean));
+        try bdfFonts.append(try allocator.create(BdfFont));
+        bdfFonts.items[0].* = try BdfFont.parse(allocator, std.mem.spanZ(glean));
         errdefer bdfFonts.items[0].deinit();
 
-        try bdfFonts.append(try allocator.create(BDFFont));
-        bdfFonts.items[1].* = try BDFFont.parse(allocator, std.mem.spanZ(victor12));
+        try bdfFonts.append(try allocator.create(BdfFont));
+        bdfFonts.items[1].* = try BdfFont.parse(allocator, std.mem.spanZ(victor12));
         errdefer bdfFonts.items[1].deinit();
 
-        try bdfFonts.append(try allocator.create(BDFFont));
-        bdfFonts.items[2].* = try BDFFont.parse(allocator, std.mem.spanZ(pressStart2P));
+        try bdfFonts.append(try allocator.create(BdfFont));
+        bdfFonts.items[2].* = try BdfFont.parse(allocator, std.mem.spanZ(pressStart2P));
         errdefer bdfFonts.items[2].deinit();
 
         var library: *FT_Library = try initFreeType(allocator);

@@ -14,13 +14,12 @@ const Layout = layout.Layout;
 
 const welcomePage = @embedFile("welcomePage.html");
 
-var buf: [10_000_000]u8 = undefined;
 const GeneralPurposeAllocator = std.heap.GeneralPurposeAllocator(.{});
 var gpa = GeneralPurposeAllocator{};
 
 const Error = error{FreeTypeInitializationError};
 
-const ZigrowserScreen = @import("screen.zig").ZigrowserScreen;
+const Screen = @import("screen.zig").Screen;
 
 pub fn main() anyerror!void {
     std.log.info("Welcome to Zigrowser.", .{});
@@ -41,12 +40,14 @@ pub fn main() anyerror!void {
     var theFonts: Fonts = try Fonts.init(&gpa.allocator);
     defer theFonts.deinit();
 
-    var screen: ZigrowserScreen = try ZigrowserScreen.init();
+    var screen: Screen = try Screen.init();
 
     var welcomePageDocument = try Document.init(&gpa.allocator, std.mem.spanZ(welcomePage));
     defer welcomePageDocument.deinit(&gpa.allocator);
 
-    const mainLayout = try Layout.init(&gpa.allocator, screen.renderer.?, &theFonts, &welcomePageDocument.body.element.node, 0, 0, 640, 480);
+    var bodyNode = &welcomePageDocument.body.element.node;
+
+    const mainLayout = try Layout.init(&gpa.allocator, screen.renderer, &theFonts, bodyNode, 0, 0, 640, 480);
 
     var done: bool = false;
     while (!done) {

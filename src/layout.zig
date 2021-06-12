@@ -9,17 +9,17 @@ const Element = @import("element.zig");
 
 const Fonts = @import("fonts.zig").Fonts;
 
-const CSSRule = @import("css.zig").Rule;
-const CSSColor = @import("css.zig").CSSColor;
-const CSSRGBAColor = @import("css.zig").CSSRGBAColor;
-const CSSRuleSet = @import("css.zig").RuleSet;
-const CSSNumber = @import("css.zig").CSSNumber;
-const CSSDataType = @import("css.zig").CSSDataType;
-const CSSValue = @import("css.zig").CSSValue;
-const CSSLengthType = @import("css.zig").CSSLengthType;
-const CSSLengthUnit = @import("css.zig").CSSLengthUnit;
+const CssRule = @import("css.zig").Rule;
+const CssColor = @import("css.zig").CssColor;
+const CssRGBAColor = @import("css.zig").CssRGBAColor;
+const CssRuleSet = @import("css.zig").RuleSet;
+const CssNumber = @import("css.zig").CssNumber;
+const CssDataType = @import("css.zig").CssDataType;
+const CssValue = @import("css.zig").CssValue;
+const CssLengthType = @import("css.zig").CssLengthType;
+const CssLengthUnit = @import("css.zig").CssLengthUnit;
 
-const ZigrowserScreen = @import("screen.zig").ZigrowserScreen;
+const Screen = @import("screen.zig").Screen;
 
 const c = @import("c.zig");
 
@@ -34,8 +34,8 @@ pub const Layout = struct {
     y: i32,
     w: u32,
     h: u32,
-    backgroundColor: ?CSSColor = null,
-    textColor: CSSColor = CSSColor{ .rgba = CSSRGBAColor{ .r = 0, .g = 0, .b = 0, .a = 255 } },
+    backgroundColor: ?CssColor = null,
+    textColor: CssColor = CssColor{ .rgba = CssRGBAColor{ .r = 0, .g = 0, .b = 0, .a = 255 } },
     marginTop: i32 = 0,
     marginBottom: i32 = 0,
     marginLeft: i32 = 0,
@@ -51,24 +51,24 @@ pub const Layout = struct {
         var marginLeft: i32 = 0;
         var marginRight: i32 = 0;
 
-        var backgroundColor: ?CSSColor = null;
-        var textColor: CSSColor = CSSColor{ .rgba = CSSRGBAColor{ .r = 0, .g = 0, .b = 0, .a = 255 } };
+        var backgroundColor: ?CssColor = null;
+        var textColor: CssColor = CssColor{ .rgba = CssRGBAColor{ .r = 0, .g = 0, .b = 0, .a = 255 } };
 
         const document: ?*Document = node.ownerDocument;
         if (document != null) {
-            var ruleSet: *CSSRuleSet = document.?.cssRuleSet;
-            var rules: ArrayList(CSSRule) = try ruleSet.getRules(node, allocator);
+            var ruleSet: *CssRuleSet = document.?.cssRuleSet;
+            var rules: ArrayList(CssRule) = try ruleSet.getRules(node, allocator);
             for (rules.items) |rule| {
                 if (std.mem.eql(u8, "margin-top", rule.property)) {
                     switch (rule.value) {
-                        CSSDataType.length => |length| {
+                        CssDataType.length => |length| {
                             switch (length.unit) {
-                                CSSLengthUnit.px => {
+                                CssLengthUnit.px => {
                                     switch (length.value) {
-                                        CSSNumber.int => |int_length| {
+                                        CssNumber.int => |int_length| {
                                             marginTop = @intCast(i32, int_length);
                                         },
-                                        CSSNumber.float => |float_length| {},
+                                        CssNumber.float => |float_length| {},
                                     }
                                 },
                                 else => {},
@@ -78,14 +78,14 @@ pub const Layout = struct {
                     }
                 } else if (std.mem.eql(u8, "margin-left", rule.property)) {
                     switch (rule.value) {
-                        CSSDataType.length => |length| {
+                        CssDataType.length => |length| {
                             switch (length.unit) {
-                                CSSLengthUnit.px => {
+                                CssLengthUnit.px => {
                                     switch (length.value) {
-                                        CSSNumber.int => |int_length| {
+                                        CssNumber.int => |int_length| {
                                             marginLeft = @intCast(i32, int_length);
                                         },
-                                        CSSNumber.float => |float_length| {},
+                                        CssNumber.float => |float_length| {},
                                     }
                                 },
                                 else => {},
@@ -95,14 +95,14 @@ pub const Layout = struct {
                     }
                 } else if (std.mem.eql(u8, "margin-bottom", rule.property)) {
                     switch (rule.value) {
-                        CSSDataType.length => |length| {
+                        CssDataType.length => |length| {
                             switch (length.unit) {
-                                CSSLengthUnit.px => {
+                                CssLengthUnit.px => {
                                     switch (length.value) {
-                                        CSSNumber.int => |int_length| {
+                                        CssNumber.int => |int_length| {
                                             marginBottom = @intCast(i32, int_length);
                                         },
-                                        CSSNumber.float => |float_length| {},
+                                        CssNumber.float => |float_length| {},
                                     }
                                 },
                                 else => {},
@@ -112,14 +112,14 @@ pub const Layout = struct {
                     }
                 } else if (std.mem.eql(u8, "margin-right", rule.property)) {
                     switch (rule.value) {
-                        CSSDataType.length => |length| {
+                        CssDataType.length => |length| {
                             switch (length.unit) {
-                                CSSLengthUnit.px => {
+                                CssLengthUnit.px => {
                                     switch (length.value) {
-                                        CSSNumber.int => |int_length| {
+                                        CssNumber.int => |int_length| {
                                             marginRight = @intCast(i32, int_length);
                                         },
-                                        CSSNumber.float => |float_length| {},
+                                        CssNumber.float => |float_length| {},
                                     }
                                 },
                                 else => {},
@@ -129,14 +129,14 @@ pub const Layout = struct {
                     }
                 } else if (std.mem.eql(u8, "background-color", rule.property)) {
                     switch (rule.value) {
-                        CSSDataType.color => |color| {
+                        CssDataType.color => |color| {
                             backgroundColor = color;
                         },
                         else => {},
                     }
                 } else if (std.mem.eql(u8, "color", rule.property)) {
                     switch (rule.value) {
-                        CSSDataType.color => |color| {
+                        CssDataType.color => |color| {
                             textColor = color;
                         },
                         else => {},
@@ -225,12 +225,12 @@ pub const Layout = struct {
         };
     }
 
-    pub fn draw(this: This, screen: *ZigrowserScreen) anyerror!void {
+    pub fn draw(this: This, screen: *Screen) anyerror!void {
         if (this.backgroundColor) |backgroundColor| {
-            var x = if (screen.hiDPI) this.x * 2 else this.x;
-            var y = if (screen.hiDPI) this.y * 2 else this.y;
-            var w = if (screen.hiDPI) this.w * 2 else this.w;
-            var h = if (screen.hiDPI) this.h * 2 else this.h;
+            var x = if (screen.hiDpi) this.x * 2 else this.x;
+            var y = if (screen.hiDpi) this.y * 2 else this.y;
+            var w = if (screen.hiDpi) this.w * 2 else this.w;
+            var h = if (screen.hiDpi) this.h * 2 else this.h;
             var r = this.backgroundColor.?.rgba.r;
             var g = this.backgroundColor.?.rgba.g;
             var b = this.backgroundColor.?.rgba.b;
@@ -264,12 +264,12 @@ pub const Layout = struct {
             var rect: *c.SDL_Rect = try this.allocator.create(c.SDL_Rect);
             rect.*.x = @intCast(c_int, this.x);
             rect.*.y = @intCast(c_int, this.y);
-            if (screen.hiDPI) {
+            if (screen.hiDpi) {
                 rect.*.x *= 2;
                 rect.*.y *= 2;
             }
-            rect.*.w = if (screen.hiDPI) @intCast(c_int, this.w * 2) else @intCast(c_int, this.w);
-            rect.*.h = if (screen.hiDPI) @intCast(c_int, this.h * 2) else @intCast(c_int, this.h);
+            rect.*.w = if (screen.hiDpi) @intCast(c_int, this.w * 2) else @intCast(c_int, this.w);
+            rect.*.h = if (screen.hiDpi) @intCast(c_int, this.h * 2) else @intCast(c_int, this.h);
             _ = c.SDL_RenderCopy(this.renderer, this.texture, null, rect);
             this.allocator.destroy(rect);
         }

@@ -9,7 +9,7 @@ pub const BoundingBox = struct {
     yOff: i8,
 };
 
-pub const BDFChar = struct {
+pub const BdfChar = struct {
     boundingBox: ?BoundingBox,
     dWidth: u8,
     dHeight: u8,
@@ -19,14 +19,14 @@ pub const BDFChar = struct {
 
 const Error = error{CodePointNotFound};
 
-pub const BDFFont = struct {
+pub const BdfFont = struct {
     const This = @This();
 
     allocator: *Allocator,
     boundingBox: BoundingBox,
-    chars: ArrayList(BDFChar),
+    chars: ArrayList(BdfChar),
 
-    pub fn getChar(this: This, codePoint: u8) !BDFChar {
+    pub fn getChar(this: This, codePoint: u8) !BdfChar {
         for (this.chars.items) |char| {
             if (char.codePoint == codePoint) {
                 return char;
@@ -35,13 +35,13 @@ pub const BDFFont = struct {
         return error.CodePointNotFound;
     }
 
-    pub fn parse(allocator: *Allocator, file: [:0]const u8) !BDFFont {
+    pub fn parse(allocator: *Allocator, file: [:0]const u8) !BdfFont {
         var lineStart: usize = 0;
         var codePoint: u32 = 0;
         var charName: []const u8 = "";
         var inBitmap: bool = false;
         var nChars: u32 = 0;
-        var charsList = ArrayList(BDFChar).init(allocator);
+        var charsList = ArrayList(BdfChar).init(allocator);
         var lines: ArrayList([]u8) = undefined;
         var nCharsAdded: u32 = 0;
         var dWidth: u8 = 0;
@@ -197,7 +197,7 @@ pub const BDFFont = struct {
                 } else if (line.len >= 7 and std.mem.eql(u8, line[0..7], "ENDCHAR"[0..7])) {
                     nCharsAdded += 1;
                     var realBoundingBox = boundingBox orelse BoundingBox{ .width = 0, .height = 0, .xOff = 0, .yOff = 0 };
-                    charsList.append(BDFChar{
+                    charsList.append(BdfChar{
                         .boundingBox = boundingBox,
                         .lines = lines.items,
                         .codePoint = codePoint,
@@ -236,14 +236,14 @@ pub const BDFFont = struct {
                 lineStart = i + 1;
             }
         }
-        return BDFFont{
+        return BdfFont{
             .allocator = allocator,
             .boundingBox = fontBoundingBox,
             .chars = charsList,
         };
     }
 
-    pub fn deinit(self: *BDFFont) void {
+    pub fn deinit(self: *BdfFont) void {
         self.chars.deinit();
     }
 };
