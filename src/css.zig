@@ -79,50 +79,34 @@ pub const RuleSet = struct {
     }
 };
 
+pub fn intToPixels(length: i64) CssValue {
+    return CssValue{
+        .length = CssLengthType{
+            .value = .{ .int = length },
+            .unit = CssLengthUnit.px,
+        },
+    };
+}
+
+pub fn floatToPixels(length: f64) CssValue {
+    return CssValue{
+        .length = CssLengthType{
+            .value = .{ .float = length },
+            .unit = CssLengthUnit.px,
+        },
+    };
+}
+
 pub const UserAgentCssRuleSet = struct {
     fn getDeclarations(this: *RuleSet, node: *Node, allocator: *Allocator) anyerror!ArrayList(Declaration) {
         var declarations: ArrayList(Declaration) = ArrayList(Declaration).init(allocator);
 
-        // TODO: Make this better somehow... it's really ugly
-
         // This represents the default user-agent rule of "body { margin: 8px }"
         if (std.mem.eql(u8, "BODY", node.nodeName)) {
-            try declarations.append(Declaration{
-                .property = "margin-top",
-                .value = CssValue{
-                    .length = CssLengthType{
-                        .value = .{ .int = 8 },
-                        .unit = CssLengthUnit.px,
-                    },
-                },
-            });
-            try declarations.append(Declaration{
-                .property = "margin-left",
-                .value = CssValue{
-                    .length = CssLengthType{
-                        .value = .{ .int = 8 },
-                        .unit = CssLengthUnit.px,
-                    },
-                },
-            });
-            try declarations.append(Declaration{
-                .property = "margin-bottom",
-                .value = CssValue{
-                    .length = CssLengthType{
-                        .value = .{ .int = 8 },
-                        .unit = CssLengthUnit.px,
-                    },
-                },
-            });
-            try declarations.append(Declaration{
-                .property = "margin-right",
-                .value = CssValue{
-                    .length = CssLengthType{
-                        .value = .{ .int = 8 },
-                        .unit = CssLengthUnit.px,
-                    },
-                },
-            });
+            try declarations.append(Declaration{ .property = "margin-top", .value = intToPixels(8) });
+            try declarations.append(Declaration{ .property = "margin-left", .value = intToPixels(8) });
+            try declarations.append(Declaration{ .property = "margin-bottom", .value = intToPixels(8) });
+            try declarations.append(Declaration{ .property = "margin-right", .value = intToPixels(8) });
         }
         return declarations;
     }
@@ -152,6 +136,8 @@ pub const GenericCssRuleSet = struct {
                 break;
             }
         }
+
+        // TODO: This needs to be removed and added to the GenericCssRuleSet by a parser instead
         if (descendentOfBody) {
             try declarations.append(Declaration{
                 .property = "background-color",
