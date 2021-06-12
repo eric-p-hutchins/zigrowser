@@ -62,6 +62,8 @@ pub const Declaration = struct {
     value: CssValue,
 };
 
+const SelectorToDeclarationMap = std.StringHashMap(ArrayList(Declaration));
+
 pub const RuleSet = struct {
     const This = @This();
 
@@ -70,6 +72,13 @@ pub const RuleSet = struct {
     getDeclarationsFn: fn (this: *This, node: *Node, allocator: *Allocator) anyerror!ArrayList(Declaration),
     deinitFn: fn (this: *This) void = noOpDeinit,
 
+    /// Get the declarations that apply to the given node.
+    ///
+    /// For example, if the node is a body and this rule set has loaded a block that looks like:
+    ///
+    ///     body { prop1: value1; prop2: value2; }
+    ///
+    /// then the declarations for 'prop1' and 'prop2' should be returned because they apply to a body element
     pub fn getDeclarations(this: *This, node: *Node, allocator: *Allocator) anyerror!ArrayList(Declaration) {
         return this.getDeclarationsFn(this, node, allocator);
     }
@@ -117,16 +126,44 @@ pub const UserAgentCssRuleSet = struct {
 };
 
 pub const GenericCssRuleSet = struct {
+    allocator: *Allocator,
+    selectorToDeclarationMap: SelectorToDeclarationMap,
+    ruleSet: RuleSet = RuleSet{
+        .getDeclarationsFn = getDeclarations,
+        .deinitFn = deinit,
+    },
+
+    pub fn init(allocator: *Allocator) !GenericCssRuleSet {
+        var selectorToDeclarationMap = SelectorToDeclarationMap.init(allocator);
+
+        return GenericCssRuleSet{
+            .allocator = allocator,
+            .selectorToDeclarationMap = selectorToDeclarationMap,
+        };
+    }
+
+    pub fn addDeclaration(this: *GenericCssRuleSet, selector: []const u8, declaration: Declaration) !void {
+        var optionalDeclarations = this.selectorToDeclarationMap.get(selector);
+        if (optionalDeclarations == null) {
+            try this.selectorToDeclarationMap.put(selector, ArrayList(Declaration).init(this.allocator));
+        }
+        var declarations = this.selectorToDeclarationMap.get(selector).?;
+        try declarations.append(declaration);
+        try this.selectorToDeclarationMap.put(selector, declarations);
+    }
+
+    fn deinit(this: *RuleSet) void {
+        const genericCssRuleSet: *GenericCssRuleSet = @fieldParentPtr(GenericCssRuleSet, "ruleSet", this);
+        genericCssRuleSet.selectorToDeclarationMap.deinit();
+    }
 
     /// Get the declarations that apply to the given node.
     /// For example, if the node is a body then all declarations should be returned within a block
     /// that looks like "body { prop1: value1; prop2: value2; }" because they apply to a body element
     fn getDeclarations(this: *RuleSet, node: *Node, allocator: *Allocator) anyerror!ArrayList(Declaration) {
-        var declarations: ArrayList(Declaration) = ArrayList(Declaration).init(allocator);
+        const genericCssRuleSet: *GenericCssRuleSet = @fieldParentPtr(GenericCssRuleSet, "ruleSet", this);
 
-        // TODO: Don't put this here but give functions to GenericCssRuleSet that allow the rules to be added
-        //
-        // body { background-color: #131315; color: white }
+        var declarations: ArrayList(Declaration) = ArrayList(Declaration).init(allocator);
 
         var descendentOfBody: bool = false;
         var currentNode: ?*Node = node;
@@ -137,41 +174,16 @@ pub const GenericCssRuleSet = struct {
             }
         }
 
-        // TODO: This needs to be removed and added to the GenericCssRuleSet by a parser instead
+        // TODO: This needs to be generalized to work for more than just body
         if (descendentOfBody) {
-            try declarations.append(Declaration{
-                .property = "background-color",
-                .value = CssValue{
-                    .color = CssColor{
-                        .rgba = CssRGBAColor{
-                            .r = 19,
-                            .g = 19,
-                            .b = 21,
-                            .a = 255,
-                        },
-                    },
-                },
-            });
-            try declarations.append(Declaration{
-                .property = "color",
-                .value = CssValue{
-                    .color = CssColor{
-                        .rgba = CssRGBAColor{
-                            .r = 255,
-                            .g = 255,
-                            .b = 255,
-                            .a = 255,
-                        },
-                    },
-                },
-            });
+            const bodyDeclarations = genericCssRuleSet.selectorToDeclarationMap.get("BODY").?;
+            for (bodyDeclarations.items) |declaration| {
+                try declarations.append(declaration);
+            }
         }
 
         return declarations;
     }
-    ruleSet: RuleSet = RuleSet{
-        .getDeclarationsFn = getDeclarations,
-    },
 };
 
 pub const CompositeCssRuleSet = struct {
@@ -185,6 +197,7 @@ pub const CompositeCssRuleSet = struct {
     pub fn deinit(this: *RuleSet) void {
         var composite: *CompositeCssRuleSet = @fieldParentPtr(CompositeCssRuleSet, "ruleSet", this);
         for (composite.ruleSets.items) |ruleSet, i| {
+            ruleSet.deinit();
             composite.allocator.destroy(ruleSet);
         }
         composite.ruleSets.deinit();

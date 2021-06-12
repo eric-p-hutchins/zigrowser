@@ -9,7 +9,7 @@ const Element = @import("element.zig");
 const HtmlElement = @import("html.zig").HtmlElement;
 
 const CssRuleSet = @import("css.zig").RuleSet;
-const CssRule = @import("css.zig").Rule;
+const CssDeclaration = @import("css.zig").Declaration;
 const CssValue = @import("css.zig").CssValue;
 const CssColor = @import("css.zig").CssColor;
 const CssRGBAColor = @import("css.zig").CssRGBAColor;
@@ -93,7 +93,15 @@ pub fn init(allocator: *Allocator, string: []const u8) !*Document {
     for (styleElements) |styleNode| {
         // TODO: Actually get this from parsing the style element
         var genericRuleSet = try allocator.create(GenericCssRuleSet);
-        genericRuleSet.* = GenericCssRuleSet{};
+        genericRuleSet.* = try GenericCssRuleSet.init(allocator);
+        try genericRuleSet.addDeclaration("BODY", CssDeclaration{
+            .property = "background-color",
+            .value = CssValue{ .color = CssColor{ .rgba = CssRGBAColor{ .r = 19, .g = 19, .b = 21, .a = 255 } } },
+        });
+        try genericRuleSet.addDeclaration("BODY", CssDeclaration{
+            .property = "color",
+            .value = CssValue{ .color = CssColor{ .rgba = CssRGBAColor{ .r = 255, .g = 255, .b = 255, .a = 255 } } },
+        });
         try ruleSet.addRuleSet(&genericRuleSet.ruleSet);
     }
 
