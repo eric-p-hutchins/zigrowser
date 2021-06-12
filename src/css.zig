@@ -6,7 +6,7 @@ const expectEqual = testing.expectEqual;
 
 const Node = @import("node.zig");
 
-pub const CssDataType = enum {
+pub const CssValueType = enum {
     length,
     color,
     textAlign,
@@ -51,13 +51,13 @@ pub const CssLengthType = struct {
     unit: CssLengthUnit,
 };
 
-pub const CssValue = union(CssDataType) {
+pub const CssValue = union(CssValueType) {
     length: CssLengthType,
     color: CssColor,
     textAlign: CssTextAlign,
 };
 
-pub const Rule = struct {
+pub const Declaration = struct {
     property: []const u8,
     value: CssValue,
 };
@@ -67,11 +67,11 @@ pub const RuleSet = struct {
 
     fn noOpDeinit(this: *This) void {}
 
-    getRulesFn: fn (this: *This, node: *Node, allocator: *Allocator) anyerror!ArrayList(Rule),
+    getDeclarationsFn: fn (this: *This, node: *Node, allocator: *Allocator) anyerror!ArrayList(Declaration),
     deinitFn: fn (this: *This) void = noOpDeinit,
 
-    pub fn getRules(this: *This, node: *Node, allocator: *Allocator) anyerror!ArrayList(Rule) {
-        return this.getRulesFn(this, node, allocator);
+    pub fn getDeclarations(this: *This, node: *Node, allocator: *Allocator) anyerror!ArrayList(Declaration) {
+        return this.getDeclarationsFn(this, node, allocator);
     }
 
     pub fn deinit(this: *This) void {
@@ -80,14 +80,14 @@ pub const RuleSet = struct {
 };
 
 pub const UserAgentCssRuleSet = struct {
-    fn getRules(this: *RuleSet, node: *Node, allocator: *Allocator) anyerror!ArrayList(Rule) {
+    fn getDeclarations(this: *RuleSet, node: *Node, allocator: *Allocator) anyerror!ArrayList(Declaration) {
+        var declarations: ArrayList(Declaration) = ArrayList(Declaration).init(allocator);
 
         // TODO: Make this better somehow... it's really ugly
-        var rules: ArrayList(Rule) = ArrayList(Rule).init(allocator);
 
         // This represents the default user-agent rule of "body { margin: 8px }"
         if (std.mem.eql(u8, "BODY", node.nodeName)) {
-            try rules.append(Rule{
+            try declarations.append(Declaration{
                 .property = "margin-top",
                 .value = CssValue{
                     .length = CssLengthType{
@@ -96,7 +96,7 @@ pub const UserAgentCssRuleSet = struct {
                     },
                 },
             });
-            try rules.append(Rule{
+            try declarations.append(Declaration{
                 .property = "margin-left",
                 .value = CssValue{
                     .length = CssLengthType{
@@ -105,7 +105,7 @@ pub const UserAgentCssRuleSet = struct {
                     },
                 },
             });
-            try rules.append(Rule{
+            try declarations.append(Declaration{
                 .property = "margin-bottom",
                 .value = CssValue{
                     .length = CssLengthType{
@@ -114,7 +114,7 @@ pub const UserAgentCssRuleSet = struct {
                     },
                 },
             });
-            try rules.append(Rule{
+            try declarations.append(Declaration{
                 .property = "margin-right",
                 .value = CssValue{
                     .length = CssLengthType{
@@ -124,27 +124,25 @@ pub const UserAgentCssRuleSet = struct {
                 },
             });
         }
-        return rules;
+        return declarations;
     }
 
     ruleSet: RuleSet = RuleSet{
-        .getRulesFn = getRules,
+        .getDeclarationsFn = getDeclarations,
     },
 };
 
 pub const GenericCssRuleSet = struct {
-    fn getRules(this: *RuleSet, node: *Node, allocator: *Allocator) anyerror!ArrayList(Rule) {
-        var rules: ArrayList(Rule) = ArrayList(Rule).init(allocator);
+
+    /// Get the declarations that apply to the given node.
+    /// For example, if the node is a body then all declarations should be returned within a block
+    /// that looks like "body { prop1: value1; prop2: value2; }" because they apply to a body element
+    fn getDeclarations(this: *RuleSet, node: *Node, allocator: *Allocator) anyerror!ArrayList(Declaration) {
+        var declarations: ArrayList(Declaration) = ArrayList(Declaration).init(allocator);
 
         // TODO: Don't put this here but give functions to GenericCssRuleSet that allow the rules to be added
         //
         // body { background-color: #131315; color: white }
-        //
-        // Also, rename "Rule" to something like "KeyValue" or something and "Rule" should really include the
-        // full description of what it applies to (tag, class, descendent, etc.) along with the key-value pair
-        //
-        // Then this getRules can search those for applicable rules based on the criteria of the given node
-        // and return those key-value pairs
 
         var descendentOfBody: bool = false;
         var currentNode: ?*Node = node;
@@ -155,7 +153,7 @@ pub const GenericCssRuleSet = struct {
             }
         }
         if (descendentOfBody) {
-            try rules.append(Rule{
+            try declarations.append(Declaration{
                 .property = "background-color",
                 .value = CssValue{
                     .color = CssColor{
@@ -168,7 +166,7 @@ pub const GenericCssRuleSet = struct {
                     },
                 },
             });
-            try rules.append(Rule{
+            try declarations.append(Declaration{
                 .property = "color",
                 .value = CssValue{
                     .color = CssColor{
@@ -183,10 +181,10 @@ pub const GenericCssRuleSet = struct {
             });
         }
 
-        return rules;
+        return declarations;
     }
     ruleSet: RuleSet = RuleSet{
-        .getRulesFn = getRules,
+        .getDeclarationsFn = getDeclarations,
     },
 };
 
@@ -211,30 +209,30 @@ pub const CompositeCssRuleSet = struct {
         try this.ruleSets.append(ruleSet);
     }
 
-    fn getRules(this: *RuleSet, node: *Node, allocator: *Allocator) anyerror!ArrayList(Rule) {
+    fn getDeclarations(this: *RuleSet, node: *Node, allocator: *Allocator) anyerror!ArrayList(Declaration) {
         var composite: *CompositeCssRuleSet = @fieldParentPtr(CompositeCssRuleSet, "ruleSet", this);
-        var rules: ArrayList(Rule) = ArrayList(Rule).init(allocator);
+        var declarations: ArrayList(Declaration) = ArrayList(Declaration).init(allocator);
 
         for (composite.ruleSets.items) |ruleSet, i| {
-            var ruleSetRules: ArrayList(Rule) = try ruleSet.getRules(node, allocator);
-            for (ruleSetRules.items) |rule| {
-                try rules.append(rule);
+            var ruleSetDeclarations: ArrayList(Declaration) = try ruleSet.getDeclarations(node, allocator);
+            for (ruleSetDeclarations.items) |declaration| {
+                try declarations.append(declaration);
             }
-            ruleSetRules.deinit();
+            ruleSetDeclarations.deinit();
         }
-        return rules;
+        return declarations;
     }
 
     allocator: *Allocator,
     ruleSets: ArrayList(*RuleSet),
     ruleSet: RuleSet = RuleSet{
-        .getRulesFn = CompositeCssRuleSet.getRules,
+        .getDeclarationsFn = CompositeCssRuleSet.getDeclarations,
         .deinitFn = CompositeCssRuleSet.deinit,
     },
 };
 
 test "CSS length" {
-    const rule: Rule = Rule{
+    const declaration: Declaration = Declaration{
         .property = "margin-top",
         .value = CssValue{
             .length = CssLengthType{
@@ -245,8 +243,8 @@ test "CSS length" {
     };
 
     var isIt8Pixels: bool = false;
-    switch (rule.value) {
-        CssDataType.length => |length| {
+    switch (declaration.value) {
+        CssValueType.length => |length| {
             switch (length.unit) {
                 CssLengthUnit.percent => {},
                 CssLengthUnit.px => {
@@ -265,7 +263,7 @@ test "CSS length" {
 }
 
 test "CSS color" {
-    const rule: Rule = Rule{
+    const declaration: Declaration = Declaration{
         .property = "background-color",
         .value = CssValue{
             .color = CssColor{
@@ -280,8 +278,8 @@ test "CSS color" {
     };
 
     var isItWhite: bool = false;
-    switch (rule.value) {
-        CssDataType.color => |color| {
+    switch (declaration.value) {
+        CssValueType.color => |color| {
             switch (color) {
                 CssColor.rgba => |rgba| {
                     if (rgba.r == 255 and rgba.g == 255 and rgba.b == 255 and rgba.a == 255) {
@@ -296,15 +294,15 @@ test "CSS color" {
 }
 
 test "CSS text-align" {
-    const rule: Rule = Rule{
+    const declaration: Declaration = Declaration{
         .property = "text-align",
         .value = CssValue{
             .textAlign = CssTextAlign.center,
         },
     };
 
-    try expectEqual(true, switch (rule.value) {
-        CssDataType.textAlign => |textAlign| if (textAlign == CssTextAlign.center) true else false,
+    try expectEqual(true, switch (declaration.value) {
+        CssValueType.textAlign => |textAlign| if (textAlign == CssTextAlign.center) true else false,
         else => false,
     });
 }

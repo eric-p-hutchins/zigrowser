@@ -9,12 +9,12 @@ const Element = @import("element.zig");
 
 const Fonts = @import("fonts.zig").Fonts;
 
-const CssRule = @import("css.zig").Rule;
+const CssDeclaration = @import("css.zig").Declaration;
 const CssColor = @import("css.zig").CssColor;
 const CssRGBAColor = @import("css.zig").CssRGBAColor;
 const CssRuleSet = @import("css.zig").RuleSet;
 const CssNumber = @import("css.zig").CssNumber;
-const CssDataType = @import("css.zig").CssDataType;
+const CssValueType = @import("css.zig").CssValueType;
 const CssValue = @import("css.zig").CssValue;
 const CssLengthType = @import("css.zig").CssLengthType;
 const CssLengthUnit = @import("css.zig").CssLengthUnit;
@@ -57,11 +57,11 @@ pub const Layout = struct {
         const document: ?*Document = node.ownerDocument;
         if (document != null) {
             var ruleSet: *CssRuleSet = document.?.cssRuleSet;
-            var rules: ArrayList(CssRule) = try ruleSet.getRules(node, allocator);
-            for (rules.items) |rule| {
-                if (std.mem.eql(u8, "margin-top", rule.property)) {
-                    switch (rule.value) {
-                        CssDataType.length => |length| {
+            var declarations: ArrayList(CssDeclaration) = try ruleSet.getDeclarations(node, allocator);
+            for (declarations.items) |declaration| {
+                if (std.mem.eql(u8, "margin-top", declaration.property)) {
+                    switch (declaration.value) {
+                        CssValueType.length => |length| {
                             switch (length.unit) {
                                 CssLengthUnit.px => {
                                     switch (length.value) {
@@ -76,9 +76,9 @@ pub const Layout = struct {
                         },
                         else => {},
                     }
-                } else if (std.mem.eql(u8, "margin-left", rule.property)) {
-                    switch (rule.value) {
-                        CssDataType.length => |length| {
+                } else if (std.mem.eql(u8, "margin-left", declaration.property)) {
+                    switch (declaration.value) {
+                        CssValueType.length => |length| {
                             switch (length.unit) {
                                 CssLengthUnit.px => {
                                     switch (length.value) {
@@ -93,9 +93,9 @@ pub const Layout = struct {
                         },
                         else => {},
                     }
-                } else if (std.mem.eql(u8, "margin-bottom", rule.property)) {
-                    switch (rule.value) {
-                        CssDataType.length => |length| {
+                } else if (std.mem.eql(u8, "margin-bottom", declaration.property)) {
+                    switch (declaration.value) {
+                        CssValueType.length => |length| {
                             switch (length.unit) {
                                 CssLengthUnit.px => {
                                     switch (length.value) {
@@ -110,9 +110,9 @@ pub const Layout = struct {
                         },
                         else => {},
                     }
-                } else if (std.mem.eql(u8, "margin-right", rule.property)) {
-                    switch (rule.value) {
-                        CssDataType.length => |length| {
+                } else if (std.mem.eql(u8, "margin-right", declaration.property)) {
+                    switch (declaration.value) {
+                        CssValueType.length => |length| {
                             switch (length.unit) {
                                 CssLengthUnit.px => {
                                     switch (length.value) {
@@ -127,23 +127,23 @@ pub const Layout = struct {
                         },
                         else => {},
                     }
-                } else if (std.mem.eql(u8, "background-color", rule.property)) {
-                    switch (rule.value) {
-                        CssDataType.color => |color| {
+                } else if (std.mem.eql(u8, "background-color", declaration.property)) {
+                    switch (declaration.value) {
+                        CssValueType.color => |color| {
                             backgroundColor = color;
                         },
                         else => {},
                     }
-                } else if (std.mem.eql(u8, "color", rule.property)) {
-                    switch (rule.value) {
-                        CssDataType.color => |color| {
+                } else if (std.mem.eql(u8, "color", declaration.property)) {
+                    switch (declaration.value) {
+                        CssValueType.color => |color| {
                             textColor = color;
                         },
                         else => {},
                     }
                 }
             }
-            rules.deinit();
+            declarations.deinit();
         }
 
         var newW: ?u32 = null;
