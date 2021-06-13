@@ -37,21 +37,22 @@ body: *HtmlElement,
 
 cssRuleSet: *CssRuleSet,
 
-fn findStyleElements(allocator: *Allocator, node: *Node) anyerror![]*const Node {
+fn findStyleElements(allocator: *Allocator, node: *Node) anyerror!ArrayList(*const Node) {
     var nodes: ArrayList(*const Node) = ArrayList(*const Node).init(allocator);
-    defer nodes.deinit();
 
     if (std.mem.eql(u8, "STYLE", node.nodeName)) {
-        return &[_]*const Node{node};
+        try nodes.append(node);
+        return nodes;
     }
 
     for (node.childNodes.items) |child| {
-        const childNodes: []*const Node = try findStyleElements(allocator, child);
-        for (childNodes) |styleNode| {
+        const childNodes: ArrayList(*const Node) = try findStyleElements(allocator, child);
+        for (childNodes.items) |styleNode| {
             try nodes.append(styleNode);
         }
+        childNodes.deinit();
     }
-    return nodes.items;
+    return nodes;
 }
 
 pub fn init(allocator: *Allocator, string: []const u8) !*Document {
@@ -88,9 +89,11 @@ pub fn init(allocator: *Allocator, string: []const u8) !*Document {
     userAgentRuleSet.* = UserAgentCssRuleSet{};
     try ruleSet.addRuleSet(&userAgentRuleSet.ruleSet);
 
-    const styleElements = try findStyleElements(allocator, &documentElement.?.element.node);
+    var styleElements = try findStyleElements(allocator, &documentElement.?.element.node);
 
-    for (styleElements) |styleNode| {
+    for (styleElements.items) |styleNode| {
+        var element = @fieldParentPtr(Element, "node", styleNode);
+        std.log.info("{s}", .{element.innerHTML});
         // TODO: Actually get this from parsing the style element
         var genericRuleSet = try allocator.create(GenericCssRuleSet);
         genericRuleSet.* = try GenericCssRuleSet.init(allocator);
@@ -104,6 +107,8 @@ pub fn init(allocator: *Allocator, string: []const u8) !*Document {
         });
         try ruleSet.addRuleSet(&genericRuleSet.ruleSet);
     }
+
+    styleElements.deinit();
 
     const document: *Document = try allocator.create(Document);
     document.* = Document{

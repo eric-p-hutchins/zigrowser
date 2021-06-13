@@ -69,8 +69,12 @@ pub const HtmlElement = struct {
         var hasSpace: bool = false;
         var text: ArrayList(u8) = ArrayList(u8).init(allocator);
         defer text.deinit();
+
         var outerHTML: ArrayList(u8) = ArrayList(u8).init(allocator);
         defer outerHTML.deinit();
+
+        var innerHTML: ArrayList(u8) = ArrayList(u8).init(allocator);
+        defer innerHTML.deinit();
 
         var outerTag: ?[]const u8 = null;
         var outerTagName: ?[]const u8 = null;
@@ -94,6 +98,7 @@ pub const HtmlElement = struct {
                             var element: *HtmlElement = try parse(allocator, file[i..]);
                             for (element.element.outerHTML) |insideElementByte| {
                                 try outerHTML.append(insideElementByte);
+                                try innerHTML.append(insideElementByte);
                             }
                             try childNodes.append(&element.element.node);
                             i += @intCast(u32, element.element.outerHTML.len) - 1;
@@ -114,12 +119,14 @@ pub const HtmlElement = struct {
                         i += @intCast(u32, textObj.?.node.textContent.?.len) - 1;
                         for (textObj.?.node.textContent.?) |textByte| {
                             try outerHTML.append(textByte);
+                            try innerHTML.append(textByte);
                         }
                         continue;
                     }
                 }
             } else {
                 try outerHTML.append(file[i]);
+                try innerHTML.append(file[i]);
                 if (byte == '>') {
                     inTag = false;
                     if (file[tagStart + 1] == '!') {
@@ -176,6 +183,7 @@ pub const HtmlElement = struct {
                     .childNodes = childNodes,
                 },
                 .outerHTML = try allocator.dupe(u8, outerHTML.items),
+                .innerHTML = try allocator.dupe(u8, innerHTML.items),
             },
             .innerText = try allocator.dupe(u8, text.items),
         };

@@ -4,4 +4,6 @@ const Element = @This();
 
 node: Node,
 
+innerHTML: []u8,
+
 outerHTML: []u8,
