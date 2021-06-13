@@ -127,7 +127,6 @@ pub const HtmlElement = struct {
                 }
             } else {
                 try outerHTML.append(file[i]);
-                try innerHTML.append(file[i]);
                 if (byte == '>') {
                     inTag = false;
                     if (file[tagStart + 1] == '!') {
@@ -206,6 +205,8 @@ test "A simple body with just text inside has correct innerText and a text child
     defer htmlElement.deinit();
 
     try expect(std.mem.eql(u8, "Welcome to Zigrowser.", htmlElement.innerText));
+    try expect(std.mem.eql(u8, "<body>\n        Welcome to Zigrowser.\n    </body>", htmlElement.element.outerHTML));
+    try expect(std.mem.eql(u8, "\n        Welcome to Zigrowser.\n    ", htmlElement.element.innerHTML));
     try expectEqual(@intCast(usize, 1), htmlElement.element.node.childNodes.items.len);
 }
 
@@ -219,5 +220,7 @@ test "An HTML element" {
     );
     defer htmlElement.deinit();
 
+    try expect(std.mem.eql(u8, "<html>\n    <body>\n        Welcome to Zigrowser.\n    </body>\n</html>", htmlElement.element.outerHTML));
+    try expect(std.mem.eql(u8, "\n    <body>\n        Welcome to Zigrowser.\n    </body>\n", htmlElement.element.innerHTML));
     try expectEqual(@intCast(usize, 3), htmlElement.element.node.childNodes.items.len);
 }

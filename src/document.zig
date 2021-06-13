@@ -41,7 +41,6 @@ cssRuleSet: *CssRuleSet,
 fn findStyleElements(allocator: *Allocator, node: *Node) anyerror!*ArrayList(*const Node) {
     var nodes: *ArrayList(*const Node) = try allocator.create(ArrayList(*const Node));
     nodes.* = ArrayList(*const Node).init(allocator);
-    // var nodes: ArrayList(*const Node) = ArrayList(*const Node).init(allocator);
 
     if (std.mem.eql(u8, "STYLE", node.nodeName)) {
         try nodes.append(node);
@@ -89,8 +88,7 @@ pub fn init(allocator: *Allocator, string: []const u8) !*Document {
     var ruleSet: *CompositeCssRuleSet = try allocator.create(CompositeCssRuleSet);
     ruleSet.* = try CompositeCssRuleSet.init(allocator);
 
-    var userAgentRuleSet = try allocator.create(UserAgentCssRuleSet);
-    userAgentRuleSet.* = UserAgentCssRuleSet{};
+    var userAgentRuleSet = try UserAgentCssRuleSet.init(allocator);
     try ruleSet.addRuleSet(&userAgentRuleSet.ruleSet);
 
     var styleElements = try findStyleElements(allocator, &documentElement.?.element.node);
@@ -140,6 +138,30 @@ test "document initialization" {
 
     try expect(document.node.isConnected);
     try expectEqualStrings("#document", document.node.nodeName);
+}
+
+test "A style element is in the head" {
+    var document: *Document = try Document.init(std.testing.allocator,
+        \\<!DOCTYPE html>
+        \\<html>
+        \\    <head>
+        \\        <title>Welcome to Zigrowser</title>
+        \\        <style type="text/css">
+        \\            @font-face{font-family:'press start 2p';src:url(./PressStart2P-Regular.ttf)format('truetype')}
+        \\            body {
+        \\              font-family: 'press start 2p';
+        \\              font-size: 16px;
+        \\              background-color: #131315;
+        \\              color: white;
+        \\            }
+        \\        </style>
+        \\    </head>
+        \\    <body>
+        \\        Welcome to Zigrowser.
+        \\    </body>
+        \\</html>
+    );
+    defer document.deinit(testing.allocator);
 }
 
 test "A simple page with just text in the body has correct innerText and a text child node" {

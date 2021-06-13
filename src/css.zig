@@ -130,6 +130,25 @@ pub fn floatToPixels(length: f64) CssValue {
 }
 
 pub const UserAgentCssRuleSet = struct {
+    allocator: *Allocator,
+    ruleSet: RuleSet = RuleSet{
+        .getDeclarationsFn = getDeclarations,
+        .deinitFn = deinit,
+    },
+
+    fn deinit(this: *RuleSet) void {
+        var userAgentCssRuleSet = @fieldParentPtr(UserAgentCssRuleSet, "ruleSet", this);
+        userAgentCssRuleSet.allocator.destroy(this);
+    }
+
+    pub fn init(allocator: *Allocator) !*UserAgentCssRuleSet {
+        var userAgentCssRuleSet = try allocator.create(UserAgentCssRuleSet);
+        userAgentCssRuleSet.* = UserAgentCssRuleSet{
+            .allocator = allocator,
+        };
+        return userAgentCssRuleSet;
+    }
+
     fn getDeclarations(this: *RuleSet, node: *Node, allocator: *Allocator) anyerror!ArrayList(Declaration) {
         var declarations: ArrayList(Declaration) = ArrayList(Declaration).init(allocator);
 
@@ -142,10 +161,6 @@ pub const UserAgentCssRuleSet = struct {
         }
         return declarations;
     }
-
-    ruleSet: RuleSet = RuleSet{
-        .getDeclarationsFn = getDeclarations,
-    },
 };
 
 pub const GenericCssRuleSet = struct {
@@ -233,7 +248,6 @@ pub const CompositeCssRuleSet = struct {
         var composite: *CompositeCssRuleSet = @fieldParentPtr(CompositeCssRuleSet, "ruleSet", this);
         for (composite.ruleSets.items) |ruleSet, i| {
             ruleSet.deinit();
-            composite.allocator.destroy(ruleSet);
         }
         composite.ruleSets.deinit();
         composite.allocator.destroy(composite);
