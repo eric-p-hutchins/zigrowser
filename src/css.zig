@@ -62,6 +62,29 @@ pub const Declaration = struct {
     value: CssValue,
 };
 
+pub const CssParser = struct {
+    pub fn parse(allocator: *Allocator, text: []const u8) !*RuleSet {
+        var genericRuleSet = try GenericCssRuleSet.init(allocator);
+
+        // TODO: Actually get this from parsing the style element
+        try genericRuleSet.addDeclaration("BODY", Declaration{
+            .property = "background-color",
+            .value = CssValue{ .color = CssColor{ .rgba = CssRGBAColor{ .r = 19, .g = 19, .b = 21, .a = 255 } } },
+        });
+        try genericRuleSet.addDeclaration("BODY", Declaration{
+            .property = "color",
+            .value = CssValue{ .color = CssColor{ .rgba = CssRGBAColor{ .r = 255, .g = 255, .b = 255, .a = 255 } } },
+        });
+
+        return &genericRuleSet.ruleSet;
+    }
+};
+
+test "CSS parser" {
+    var ruleSet = try CssParser.parse(std.testing.allocator, "body{background-color: #131315;color:white}");
+    defer ruleSet.deinit();
+}
+
 const SelectorToDeclarationMap = std.StringHashMap(ArrayList(Declaration));
 
 pub const RuleSet = struct {
@@ -133,13 +156,16 @@ pub const GenericCssRuleSet = struct {
         .deinitFn = deinit,
     },
 
-    pub fn init(allocator: *Allocator) !GenericCssRuleSet {
+    pub fn init(allocator: *Allocator) !*GenericCssRuleSet {
+        var genericCssRuleSet = try allocator.create(GenericCssRuleSet);
         var selectorToDeclarationMap = SelectorToDeclarationMap.init(allocator);
 
-        return GenericCssRuleSet{
+        genericCssRuleSet.* = GenericCssRuleSet{
             .allocator = allocator,
             .selectorToDeclarationMap = selectorToDeclarationMap,
         };
+
+        return genericCssRuleSet;
     }
 
     pub fn addDeclaration(this: *GenericCssRuleSet, selector: []const u8, declaration: Declaration) !void {
@@ -154,7 +180,14 @@ pub const GenericCssRuleSet = struct {
 
     fn deinit(this: *RuleSet) void {
         const genericCssRuleSet: *GenericCssRuleSet = @fieldParentPtr(GenericCssRuleSet, "ruleSet", this);
+
+        var iterator = genericCssRuleSet.selectorToDeclarationMap.valueIterator();
+        var list: ?*ArrayList(Declaration) = iterator.next();
+        while (list != null) : (list = iterator.next()) {
+            list.?.deinit();
+        }
         genericCssRuleSet.selectorToDeclarationMap.deinit();
+        genericCssRuleSet.allocator.destroy(genericCssRuleSet);
     }
 
     /// Get the declarations that apply to the given node.
@@ -176,9 +209,11 @@ pub const GenericCssRuleSet = struct {
 
         // TODO: This needs to be generalized to work for more than just body
         if (descendentOfBody) {
-            const bodyDeclarations = genericCssRuleSet.selectorToDeclarationMap.get("BODY").?;
-            for (bodyDeclarations.items) |declaration| {
-                try declarations.append(declaration);
+            const bodyDeclarations = genericCssRuleSet.selectorToDeclarationMap.get("BODY");
+            if (bodyDeclarations != null) {
+                for (bodyDeclarations.?.items) |declaration| {
+                    try declarations.append(declaration);
+                }
             }
         }
 

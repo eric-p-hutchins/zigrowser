@@ -25,6 +25,7 @@ pub const HtmlElement = struct {
         this.allocator.free(this.innerText);
         this.allocator.free(this.element.node.nodeName);
         this.allocator.free(this.element.outerHTML);
+        this.allocator.free(this.element.innerHTML);
         for (this.element.node.childNodes.items) |item| {
             if (item.nodeType == 1) {
                 var element: *Element = @fieldParentPtr(Element, "node", item);

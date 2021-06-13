@@ -15,6 +15,7 @@ const CssColor = @import("css.zig").CssColor;
 const CssRGBAColor = @import("css.zig").CssRGBAColor;
 const CssLengthType = @import("css.zig").CssLengthType;
 const CssLengthUnit = @import("css.zig").CssLengthUnit;
+const CssParser = @import("css.zig").CssParser;
 
 const UserAgentCssRuleSet = @import("css.zig").UserAgentCssRuleSet;
 const GenericCssRuleSet = @import("css.zig").GenericCssRuleSet;
@@ -37,8 +38,10 @@ body: *HtmlElement,
 
 cssRuleSet: *CssRuleSet,
 
-fn findStyleElements(allocator: *Allocator, node: *Node) anyerror!ArrayList(*const Node) {
-    var nodes: ArrayList(*const Node) = ArrayList(*const Node).init(allocator);
+fn findStyleElements(allocator: *Allocator, node: *Node) anyerror!*ArrayList(*const Node) {
+    var nodes: *ArrayList(*const Node) = try allocator.create(ArrayList(*const Node));
+    nodes.* = ArrayList(*const Node).init(allocator);
+    // var nodes: ArrayList(*const Node) = ArrayList(*const Node).init(allocator);
 
     if (std.mem.eql(u8, "STYLE", node.nodeName)) {
         try nodes.append(node);
@@ -46,11 +49,12 @@ fn findStyleElements(allocator: *Allocator, node: *Node) anyerror!ArrayList(*con
     }
 
     for (node.childNodes.items) |child| {
-        const childNodes: ArrayList(*const Node) = try findStyleElements(allocator, child);
+        const childNodes: *ArrayList(*const Node) = try findStyleElements(allocator, child);
         for (childNodes.items) |styleNode| {
             try nodes.append(styleNode);
         }
         childNodes.deinit();
+        allocator.destroy(childNodes);
     }
     return nodes;
 }
@@ -93,22 +97,12 @@ pub fn init(allocator: *Allocator, string: []const u8) !*Document {
 
     for (styleElements.items) |styleNode| {
         var element = @fieldParentPtr(Element, "node", styleNode);
-        std.log.info("{s}", .{element.innerHTML});
-        // TODO: Actually get this from parsing the style element
-        var genericRuleSet = try allocator.create(GenericCssRuleSet);
-        genericRuleSet.* = try GenericCssRuleSet.init(allocator);
-        try genericRuleSet.addDeclaration("BODY", CssDeclaration{
-            .property = "background-color",
-            .value = CssValue{ .color = CssColor{ .rgba = CssRGBAColor{ .r = 19, .g = 19, .b = 21, .a = 255 } } },
-        });
-        try genericRuleSet.addDeclaration("BODY", CssDeclaration{
-            .property = "color",
-            .value = CssValue{ .color = CssColor{ .rgba = CssRGBAColor{ .r = 255, .g = 255, .b = 255, .a = 255 } } },
-        });
-        try ruleSet.addRuleSet(&genericRuleSet.ruleSet);
+        var elementRuleSet = try CssParser.parse(allocator, element.innerHTML);
+        try ruleSet.addRuleSet(elementRuleSet);
     }
 
     styleElements.deinit();
+    allocator.destroy(styleElements);
 
     const document: *Document = try allocator.create(Document);
     document.* = Document{
