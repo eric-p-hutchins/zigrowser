@@ -11,7 +11,7 @@ const Fonts = @import("fonts.zig").Fonts;
 
 const CssDeclaration = @import("css.zig").Declaration;
 const CssColor = @import("css.zig").CssColor;
-const CssRGBColor = @import("css.zig").CssRGBColor;
+const CssRgbColor = @import("css.zig").CssRgbColor;
 const CssRuleSet = @import("css.zig").RuleSet;
 const CssNumber = @import("css.zig").CssNumber;
 const CssValueType = @import("css.zig").CssValueType;
@@ -34,8 +34,8 @@ pub const Layout = struct {
     y: i32,
     w: u32,
     h: u32,
-    backgroundColor: ?CssColor = null,
-    textColor: CssColor = CssColor{ .rgb = CssRGBColor{ .r = 0, .g = 0, .b = 0 } },
+    backgroundColor: ?CssRgbColor = null,
+    textColor: CssRgbColor = CssRGBColor{ .r = 0, .g = 0, .b = 0 },
     marginTop: i32 = 0,
     marginBottom: i32 = 0,
     marginLeft: i32 = 0,
@@ -51,8 +51,8 @@ pub const Layout = struct {
         var marginLeft: i32 = 0;
         var marginRight: i32 = 0;
 
-        var backgroundColor: ?CssColor = null;
-        var textColor: CssColor = CssColor{ .rgb = CssRGBColor{ .r = 0, .g = 0, .b = 0 } };
+        var backgroundColor: ?CssRgbColor = null;
+        var textColor: CssRgbColor = CssRgbColor{ .r = 0, .g = 0, .b = 0 };
 
         const document: ?*Document = node.ownerDocument;
         if (document != null) {
@@ -130,14 +130,14 @@ pub const Layout = struct {
                 } else if (std.mem.eql(u8, "background-color", declaration.property)) {
                     switch (declaration.value) {
                         CssValueType.color => |color| {
-                            backgroundColor = color;
+                            backgroundColor = color.toRgbColor();
                         },
                         else => {},
                     }
                 } else if (std.mem.eql(u8, "color", declaration.property)) {
                     switch (declaration.value) {
                         CssValueType.color => |color| {
-                            textColor = color;
+                            textColor = color.toRgbColor();
                         },
                         else => {},
                     }
@@ -231,9 +231,9 @@ pub const Layout = struct {
             var y = if (screen.hiDpi) this.y * 2 else this.y;
             var w = if (screen.hiDpi) this.w * 2 else this.w;
             var h = if (screen.hiDpi) this.h * 2 else this.h;
-            var r = this.backgroundColor.?.rgb.r;
-            var g = this.backgroundColor.?.rgb.g;
-            var b = this.backgroundColor.?.rgb.b;
+            var r = this.backgroundColor.?.r;
+            var g = this.backgroundColor.?.g;
+            var b = this.backgroundColor.?.b;
             try screen.fillRect(x, y, w, h, r, g, b);
         }
         if (this.node.textContent != null) {
@@ -253,9 +253,9 @@ pub const Layout = struct {
                     total = 1;
                 }
                 var extent = this.node.textContent.?[firstNonSpace.? .. lastNonSpace.? + 1];
-                var r = this.textColor.rgb.r;
-                var g = this.textColor.rgb.g;
-                var b = this.textColor.rgb.b;
+                var r = this.textColor.r;
+                var g = this.textColor.g;
+                var b = this.textColor.b;
                 try screen.drawString(this.fonts.bdfFonts.items[2], extent, this.x, this.y, r, g, b);
             }
         }

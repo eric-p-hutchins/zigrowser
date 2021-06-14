@@ -35,9 +35,31 @@ pub const CssColorKeyword = enum {
     teal,
     white,
     yellow,
+
+    pub fn toRgbColor(this: CssColorKeyword) CssRgbColor {
+        return switch (this) {
+            .aqua => CssRgbColor{ .r = 0, .g = 255, .b = 255 },
+            .black => CssRgbColor{ .r = 0, .g = 0, .b = 0 },
+            .blue => CssRgbColor{ .r = 0, .g = 0, .b = 255 },
+            .fuchsia => CssRgbColor{ .r = 255, .g = 0, .b = 255 },
+            .gray => CssRgbColor{ .r = 128, .g = 128, .b = 128 },
+            .green => CssRgbColor{ .r = 0, .g = 128, .b = 0 },
+            .lime => CssRgbColor{ .r = 0, .g = 255, .b = 0 },
+            .maroon => CssRgbColor{ .r = 128, .g = 0, .b = 0 },
+            .navy => CssRgbColor{ .r = 0, .g = 128, .b = 0 },
+            .olive => CssRgbColor{ .r = 128, .g = 128, .b = 0 },
+            .orange => CssRgbColor{ .r = 255, .g = 165, .b = 0 },
+            .purple => CssRgbColor{ .r = 128, .g = 0, .b = 128 },
+            .red => CssRgbColor{ .r = 255, .g = 0, .b = 0 },
+            .silver => CssRgbColor{ .r = 192, .g = 192, .b = 192 },
+            .teal => CssRgbColor{ .r = 0, .g = 128, .b = 128 },
+            .white => CssRgbColor{ .r = 255, .g = 255, .b = 255 },
+            .yellow => CssRgbColor{ .r = 255, .g = 255, .b = 0 },
+        };
+    }
 };
 
-pub const CssRGBColor = struct {
+pub const CssRgbColor = struct {
     r: u8,
     g: u8,
     b: u8,
@@ -51,7 +73,14 @@ pub const CssTextAlign = enum {
 
 pub const CssColor = union(enum) {
     keyword: CssColorKeyword,
-    rgb: CssRGBColor,
+    rgb: CssRgbColor,
+
+    pub fn toRgbColor(this: CssColor) CssRgbColor {
+        switch (this) {
+            .keyword => return this.keyword.toRgbColor(),
+            .rgb => return this.rgb,
+        }
+    }
 };
 
 pub const CssNumber = union(enum) {
@@ -187,11 +216,115 @@ pub const CssParser = struct {
                                     .property = property.items,
                                     .value = CssValue{
                                         .color = CssColor{
-                                            .rgb = CssRGBColor{ .r = d1, .g = d2, .b = d3 },
+                                            .rgb = CssRgbColor{ .r = d1, .g = d2, .b = d3 },
                                         },
                                     },
                                 };
                                 try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                            } else {
+                                if (std.mem.eql(u8, "aqua", value.items)) {
+                                    var declaration = Declaration{
+                                        .property = property.items,
+                                        .value = CssValue{ .color = CssColor{ .keyword = CssColorKeyword.aqua } },
+                                    };
+                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                                } else if (std.mem.eql(u8, "black", value.items)) {
+                                    var declaration = Declaration{
+                                        .property = property.items,
+                                        .value = CssValue{ .color = CssColor{ .keyword = CssColorKeyword.black } },
+                                    };
+                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                                } else if (std.mem.eql(u8, "blue", value.items)) {
+                                    var declaration = Declaration{
+                                        .property = property.items,
+                                        .value = CssValue{ .color = CssColor{ .keyword = CssColorKeyword.blue } },
+                                    };
+                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                                } else if (std.mem.eql(u8, "fuchsia", value.items)) {
+                                    var declaration = Declaration{
+                                        .property = property.items,
+                                        .value = CssValue{ .color = CssColor{ .keyword = CssColorKeyword.fuchsia } },
+                                    };
+                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                                } else if (std.mem.eql(u8, "gray", value.items)) {
+                                    var declaration = Declaration{
+                                        .property = property.items,
+                                        .value = CssValue{ .color = CssColor{ .keyword = CssColorKeyword.gray } },
+                                    };
+                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                                } else if (std.mem.eql(u8, "green", value.items)) {
+                                    var declaration = Declaration{
+                                        .property = property.items,
+                                        .value = CssValue{ .color = CssColor{ .keyword = CssColorKeyword.green } },
+                                    };
+                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                                } else if (std.mem.eql(u8, "lime", value.items)) {
+                                    var declaration = Declaration{
+                                        .property = property.items,
+                                        .value = CssValue{ .color = CssColor{ .keyword = CssColorKeyword.lime } },
+                                    };
+                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                                } else if (std.mem.eql(u8, "maroon", value.items)) {
+                                    var declaration = Declaration{
+                                        .property = property.items,
+                                        .value = CssValue{ .color = CssColor{ .keyword = CssColorKeyword.maroon } },
+                                    };
+                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                                } else if (std.mem.eql(u8, "navy", value.items)) {
+                                    var declaration = Declaration{
+                                        .property = property.items,
+                                        .value = CssValue{ .color = CssColor{ .keyword = CssColorKeyword.navy } },
+                                    };
+                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                                } else if (std.mem.eql(u8, "olive", value.items)) {
+                                    var declaration = Declaration{
+                                        .property = property.items,
+                                        .value = CssValue{ .color = CssColor{ .keyword = CssColorKeyword.olive } },
+                                    };
+                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                                } else if (std.mem.eql(u8, "orange", value.items)) {
+                                    var declaration = Declaration{
+                                        .property = property.items,
+                                        .value = CssValue{ .color = CssColor{ .keyword = CssColorKeyword.orange } },
+                                    };
+                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                                } else if (std.mem.eql(u8, "purple", value.items)) {
+                                    var declaration = Declaration{
+                                        .property = property.items,
+                                        .value = CssValue{ .color = CssColor{ .keyword = CssColorKeyword.purple } },
+                                    };
+                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                                } else if (std.mem.eql(u8, "red", value.items)) {
+                                    var declaration = Declaration{
+                                        .property = property.items,
+                                        .value = CssValue{ .color = CssColor{ .keyword = CssColorKeyword.red } },
+                                    };
+                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                                } else if (std.mem.eql(u8, "silver", value.items)) {
+                                    var declaration = Declaration{
+                                        .property = property.items,
+                                        .value = CssValue{ .color = CssColor{ .keyword = CssColorKeyword.silver } },
+                                    };
+                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                                } else if (std.mem.eql(u8, "teal", value.items)) {
+                                    var declaration = Declaration{
+                                        .property = property.items,
+                                        .value = CssValue{ .color = CssColor{ .keyword = CssColorKeyword.teal } },
+                                    };
+                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                                } else if (std.mem.eql(u8, "white", value.items)) {
+                                    var declaration = Declaration{
+                                        .property = property.items,
+                                        .value = CssValue{ .color = CssColor{ .keyword = CssColorKeyword.white } },
+                                    };
+                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                                } else if (std.mem.eql(u8, "yellow", value.items)) {
+                                    var declaration = Declaration{
+                                        .property = property.items,
+                                        .value = CssValue{ .color = CssColor{ .keyword = CssColorKeyword.yellow } },
+                                    };
+                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                                }
                             }
                         }
                         allocator.free(upperSelector);
@@ -208,13 +341,6 @@ pub const CssParser = struct {
         selector.deinit();
         property.deinit();
         value.deinit();
-
-        // TODO: Actually get this from parsing the style element
-        var declaration = Declaration{
-            .property = "color",
-            .value = CssValue{ .color = CssColor{ .rgb = CssRGBColor{ .r = 255, .g = 255, .b = 255 } } },
-        };
-        try genericRuleSet.addDeclaration("BODY", &declaration);
 
         return &genericRuleSet.ruleSet;
     }
@@ -468,7 +594,7 @@ test "CSS color" {
         .property = "background-color",
         .value = CssValue{
             .color = CssColor{
-                .rgb = CssRGBColor{
+                .rgb = CssRgbColor{
                     .r = 255,
                     .g = 255,
                     .b = 255,
