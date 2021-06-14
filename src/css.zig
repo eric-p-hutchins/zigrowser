@@ -18,17 +18,29 @@ pub const CssLengthUnit = enum {
 };
 
 pub const CssColorKeyword = enum {
+    aqua,
+    black,
+    blue,
+    fuchsia,
+    gray,
+    green,
+    lime,
+    maroon,
+    navy,
+    olive,
+    orange,
+    purple,
+    red,
+    silver,
+    teal,
     white,
+    yellow,
 };
 
-// Percentages or float values like 50% or 0.5 should be mapped to u8 values (50% = 0x80, 0.25 = 0x40). alpha
-// should default to 0xFF when unspecified by the CSS source
-// Keywords also need to be mapped so that 'white' comes in as .{ .r = 255, .g = 255, .b = 255, .a = 255 }
-pub const CssRGBAColor = struct {
+pub const CssRGBColor = struct {
     r: u8,
     g: u8,
     b: u8,
-    a: u8,
 };
 
 pub const CssTextAlign = enum {
@@ -38,7 +50,8 @@ pub const CssTextAlign = enum {
 };
 
 pub const CssColor = union(enum) {
-    rgba: CssRGBAColor,
+    keyword: CssColorKeyword,
+    rgb: CssRGBColor,
 };
 
 pub const CssNumber = union(enum) {
@@ -60,21 +73,148 @@ pub const CssValue = union(CssValueType) {
 pub const Declaration = struct {
     property: []const u8,
     value: CssValue,
+
+    pub fn deinit(allocator: *Allocator, declaration: *Declaration) void {
+        allocator.free(declaration.property);
+        allocator.destroy(declaration);
+    }
+
+    pub fn dupe(allocator: *Allocator, declaration: *const Declaration) !*Declaration {
+        var dupDec = try allocator.create(Declaration);
+        dupDec.* = Declaration{
+            .property = try std.mem.dupe(allocator, u8, declaration.property),
+            .value = declaration.value,
+        };
+        return dupDec;
+    }
 };
 
 pub const CssParser = struct {
     pub fn parse(allocator: *Allocator, text: []const u8) !*RuleSet {
         var genericRuleSet = try GenericCssRuleSet.init(allocator);
 
+        var inAtRule: bool = false;
+        var inBlock: bool = false;
+        var inProperty: bool = false;
+        var inValue: bool = false;
+
+        var selector = ArrayList(u8).init(allocator);
+        var property = ArrayList(u8).init(allocator);
+        var value = ArrayList(u8).init(allocator);
+
+        for (text) |byte, i| {
+            if (inAtRule) {
+                // This is not actually good enough but works for my test case
+                if (byte == '}') {
+                    inAtRule = false;
+                }
+            } else if (!inBlock) { // !inAtRule
+                if (byte == '@') {
+                    inAtRule = true;
+                } else if (byte != '{' and byte != ' ' and byte != '\n') {
+                    try selector.append(byte);
+                } else if (byte == '{') { // byte == '{'
+                    inBlock = true;
+                    inProperty = true;
+                }
+            } else { // !inAtRule and inBlock
+                if (inProperty) {
+                    if (byte == ':') {
+                        inProperty = false;
+                        inValue = true;
+                    } else if (byte != ' ' and byte != '\n') {
+                        try property.append(byte);
+                    }
+                } else {
+                    if (byte == ';') {
+                        inValue = false;
+                        var upperSelector = try std.ascii.allocUpperString(allocator, selector.items);
+                        if (std.mem.eql(u8, "background-color", property.items) or std.mem.eql(u8, "color", property.items)) {
+                            if (value.items[0] == '#') {
+                                var hex1 = value.items[1];
+                                var hex2 = value.items[2];
+                                var hex3 = value.items[3];
+                                var hex4 = value.items[4];
+                                var hex5 = value.items[5];
+                                var hex6 = value.items[6];
+                                var d1: u8 = 0;
+                                var d2: u8 = 0;
+                                var d3: u8 = 0;
+                                if (hex1 >= 'a' and hex1 <= 'f') {
+                                    d1 = 16 * (10 + (hex1 - 'a'));
+                                } else if (hex1 >= 'A' and hex1 <= 'F') {
+                                    d1 = 16 * (10 + (hex1 - 'A'));
+                                } else if (hex1 >= '0' and hex1 <= '9') {
+                                    d1 = 16 * (hex1 - '0');
+                                }
+                                if (hex2 >= 'a' and hex2 <= 'f') {
+                                    d1 += 10 + (hex2 - 'a');
+                                } else if (hex2 >= 'A' and hex2 <= 'F') {
+                                    d1 += 10 + (hex2 - 'A');
+                                } else if (hex2 >= '0' and hex2 <= '9') {
+                                    d1 += hex2 - '0';
+                                }
+                                if (hex3 >= 'a' and hex3 <= 'f') {
+                                    d2 = 16 * (10 + (hex3 - 'a'));
+                                } else if (hex3 >= 'A' and hex3 <= 'F') {
+                                    d2 = 16 * (10 + (hex3 - 'A'));
+                                } else if (hex3 >= '0' and hex3 <= '9') {
+                                    d2 = 16 * (hex3 - '0');
+                                }
+                                if (hex4 >= 'a' and hex4 <= 'f') {
+                                    d2 += 10 + (hex4 - 'a');
+                                } else if (hex4 >= 'A' and hex4 <= 'F') {
+                                    d2 += 10 + (hex4 - 'A');
+                                } else if (hex4 >= '0' and hex4 <= '9') {
+                                    d2 += hex4 - '0';
+                                }
+                                if (hex5 >= 'a' and hex5 <= 'f') {
+                                    d3 = 16 * (10 + (hex5 - 'a'));
+                                } else if (hex5 >= 'A' and hex5 <= 'F') {
+                                    d3 = 16 * (10 + (hex5 - 'A'));
+                                } else if (hex5 >= '0' and hex5 <= '9') {
+                                    d3 = 16 * (hex5 - '0');
+                                }
+                                if (hex6 >= 'a' and hex6 <= 'f') {
+                                    d3 += 10 + (hex6 - 'a');
+                                } else if (hex6 >= 'A' and hex6 <= 'F') {
+                                    d3 += 10 + (hex6 - 'A');
+                                } else if (hex6 >= '0' and hex6 <= '9') {
+                                    d3 += hex6 - '0';
+                                }
+
+                                var declaration = Declaration{
+                                    .property = property.items,
+                                    .value = CssValue{
+                                        .color = CssColor{
+                                            .rgb = CssRGBColor{ .r = d1, .g = d2, .b = d3 },
+                                        },
+                                    },
+                                };
+                                try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                            }
+                        }
+                        allocator.free(upperSelector);
+                        property.clearRetainingCapacity();
+                        value.clearRetainingCapacity();
+                        inProperty = true;
+                    } else if (byte != ' ' and byte != '\n') {
+                        try value.append(byte);
+                    }
+                }
+            }
+        }
+
+        selector.deinit();
+        property.deinit();
+        value.deinit();
+
         // TODO: Actually get this from parsing the style element
-        try genericRuleSet.addDeclaration("BODY", Declaration{
-            .property = "background-color",
-            .value = CssValue{ .color = CssColor{ .rgba = CssRGBAColor{ .r = 19, .g = 19, .b = 21, .a = 255 } } },
-        });
-        try genericRuleSet.addDeclaration("BODY", Declaration{
+        var declaration = Declaration{
             .property = "color",
-            .value = CssValue{ .color = CssColor{ .rgba = CssRGBAColor{ .r = 255, .g = 255, .b = 255, .a = 255 } } },
-        });
+            .value = CssValue{ .color = CssColor{ .rgb = CssRGBColor{ .r = 255, .g = 255, .b = 255 } } },
+        };
+        try genericRuleSet.addDeclaration("BODY", &declaration);
 
         return &genericRuleSet.ruleSet;
     }
@@ -85,7 +225,7 @@ test "CSS parser" {
     defer ruleSet.deinit();
 }
 
-const SelectorToDeclarationMap = std.StringHashMap(ArrayList(Declaration));
+const SelectorToDeclarationMap = std.StringHashMap(ArrayList(*Declaration));
 
 pub const RuleSet = struct {
     const This = @This();
@@ -165,6 +305,7 @@ pub const UserAgentCssRuleSet = struct {
 
 pub const GenericCssRuleSet = struct {
     allocator: *Allocator,
+    keys: ArrayList([]const u8),
     selectorToDeclarationMap: SelectorToDeclarationMap,
     ruleSet: RuleSet = RuleSet{
         .getDeclarationsFn = getDeclarations,
@@ -178,29 +319,41 @@ pub const GenericCssRuleSet = struct {
         genericCssRuleSet.* = GenericCssRuleSet{
             .allocator = allocator,
             .selectorToDeclarationMap = selectorToDeclarationMap,
+            .keys = ArrayList([]const u8).init(allocator),
         };
 
         return genericCssRuleSet;
     }
 
-    pub fn addDeclaration(this: *GenericCssRuleSet, selector: []const u8, declaration: Declaration) !void {
-        var optionalDeclarations = this.selectorToDeclarationMap.get(selector);
+    pub fn addDeclaration(this: *GenericCssRuleSet, selector: []const u8, declaration: *const Declaration) !void {
+        var key = try this.allocator.dupe(u8, selector);
+        try this.keys.append(key);
+        var optionalDeclarations = this.selectorToDeclarationMap.get(key);
         if (optionalDeclarations == null) {
-            try this.selectorToDeclarationMap.put(selector, ArrayList(Declaration).init(this.allocator));
+            try this.selectorToDeclarationMap.put(key, ArrayList(*Declaration).init(this.allocator));
         }
-        var declarations = this.selectorToDeclarationMap.get(selector).?;
-        try declarations.append(declaration);
-        try this.selectorToDeclarationMap.put(selector, declarations);
+        var declarations = this.selectorToDeclarationMap.get(key).?;
+        try declarations.append(try Declaration.dupe(this.allocator, declaration));
+        try this.selectorToDeclarationMap.put(key, declarations);
     }
 
     fn deinit(this: *RuleSet) void {
         const genericCssRuleSet: *GenericCssRuleSet = @fieldParentPtr(GenericCssRuleSet, "ruleSet", this);
 
         var iterator = genericCssRuleSet.selectorToDeclarationMap.valueIterator();
-        var list: ?*ArrayList(Declaration) = iterator.next();
+        var list: ?*ArrayList(*Declaration) = iterator.next();
         while (list != null) : (list = iterator.next()) {
+            for (list.?.items) |item| {
+                Declaration.deinit(genericCssRuleSet.allocator, item);
+            }
             list.?.deinit();
         }
+
+        for (genericCssRuleSet.keys.items) |item| {
+            genericCssRuleSet.allocator.free(item);
+        }
+        genericCssRuleSet.keys.deinit();
+
         genericCssRuleSet.selectorToDeclarationMap.deinit();
         genericCssRuleSet.allocator.destroy(genericCssRuleSet);
     }
@@ -227,7 +380,7 @@ pub const GenericCssRuleSet = struct {
             const bodyDeclarations = genericCssRuleSet.selectorToDeclarationMap.get("BODY");
             if (bodyDeclarations != null) {
                 for (bodyDeclarations.?.items) |declaration| {
-                    try declarations.append(declaration);
+                    try declarations.append(declaration.*);
                 }
             }
         }
@@ -315,11 +468,10 @@ test "CSS color" {
         .property = "background-color",
         .value = CssValue{
             .color = CssColor{
-                .rgba = CssRGBAColor{
+                .rgb = CssRGBColor{
                     .r = 255,
                     .g = 255,
                     .b = 255,
-                    .a = 255,
                 },
             },
         },
@@ -329,11 +481,12 @@ test "CSS color" {
     switch (declaration.value) {
         CssValueType.color => |color| {
             switch (color) {
-                CssColor.rgba => |rgba| {
-                    if (rgba.r == 255 and rgba.g == 255 and rgba.b == 255 and rgba.a == 255) {
+                CssColor.rgb => |rgb| {
+                    if (rgb.r == 255 and rgb.g == 255 and rgb.b == 255) {
                         isItWhite = true;
                     }
                 },
+                CssColor.keyword => |keyword| {},
             }
         },
         else => {},

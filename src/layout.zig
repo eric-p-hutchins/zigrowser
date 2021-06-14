@@ -11,7 +11,7 @@ const Fonts = @import("fonts.zig").Fonts;
 
 const CssDeclaration = @import("css.zig").Declaration;
 const CssColor = @import("css.zig").CssColor;
-const CssRGBAColor = @import("css.zig").CssRGBAColor;
+const CssRGBColor = @import("css.zig").CssRGBColor;
 const CssRuleSet = @import("css.zig").RuleSet;
 const CssNumber = @import("css.zig").CssNumber;
 const CssValueType = @import("css.zig").CssValueType;
@@ -35,7 +35,7 @@ pub const Layout = struct {
     w: u32,
     h: u32,
     backgroundColor: ?CssColor = null,
-    textColor: CssColor = CssColor{ .rgba = CssRGBAColor{ .r = 0, .g = 0, .b = 0, .a = 255 } },
+    textColor: CssColor = CssColor{ .rgb = CssRGBColor{ .r = 0, .g = 0, .b = 0 } },
     marginTop: i32 = 0,
     marginBottom: i32 = 0,
     marginLeft: i32 = 0,
@@ -52,7 +52,7 @@ pub const Layout = struct {
         var marginRight: i32 = 0;
 
         var backgroundColor: ?CssColor = null;
-        var textColor: CssColor = CssColor{ .rgba = CssRGBAColor{ .r = 0, .g = 0, .b = 0, .a = 255 } };
+        var textColor: CssColor = CssColor{ .rgb = CssRGBColor{ .r = 0, .g = 0, .b = 0 } };
 
         const document: ?*Document = node.ownerDocument;
         if (document != null) {
@@ -231,9 +231,9 @@ pub const Layout = struct {
             var y = if (screen.hiDpi) this.y * 2 else this.y;
             var w = if (screen.hiDpi) this.w * 2 else this.w;
             var h = if (screen.hiDpi) this.h * 2 else this.h;
-            var r = this.backgroundColor.?.rgba.r;
-            var g = this.backgroundColor.?.rgba.g;
-            var b = this.backgroundColor.?.rgba.b;
+            var r = this.backgroundColor.?.rgb.r;
+            var g = this.backgroundColor.?.rgb.g;
+            var b = this.backgroundColor.?.rgb.b;
             try screen.fillRect(x, y, w, h, r, g, b);
         }
         if (this.node.textContent != null) {
@@ -253,9 +253,9 @@ pub const Layout = struct {
                     total = 1;
                 }
                 var extent = this.node.textContent.?[firstNonSpace.? .. lastNonSpace.? + 1];
-                var r = this.textColor.rgba.r;
-                var g = this.textColor.rgba.g;
-                var b = this.textColor.rgba.b;
+                var r = this.textColor.rgb.r;
+                var g = this.textColor.rgb.g;
+                var b = this.textColor.rgb.b;
                 try screen.drawString(this.fonts.bdfFonts.items[2], extent, this.x, this.y, r, g, b);
             }
         }
