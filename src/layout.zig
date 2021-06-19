@@ -151,26 +151,23 @@ pub const Layout = struct {
         var texture: ?*c.SDL_Texture = null;
         if (std.mem.eql(u8, "IMG", node.nodeName)) {
             var element: *Element = @fieldParentPtr(Element, "node", node);
-            // TODO: Get the actual image properties that have already been parsed to determine 'src'
-            if (std.mem.indexOf(u8, element.outerHTML, "src=\"")) |startIndex| {
-                if (std.mem.indexOf(u8, element.outerHTML[startIndex + "src=\"".len ..], "\"")) |endIndex| {
-                    const path: []const u8 = element.outerHTML[startIndex + "src=\"".len .. startIndex + "src=\"".len + endIndex];
-                    const new_path: []const u8 = try std.mem.concat(allocator, u8, &[_][]const u8{ "src/", path });
-                    const new_path_null_term: [:0]const u8 = try allocator.dupeZ(u8, new_path);
-                    var new_path_c: [*c]const u8 = @ptrCast([*c]const u8, new_path_null_term);
-                    const image: ?*c.SDL_Surface = c.IMG_Load(new_path_c);
-                    if (image == null) {
-                        const err: [*c]const u8 = c.IMG_GetError();
-                        std.log.info("{any}", .{std.mem.span(err)});
-                    } else {
-                        texture = c.SDL_CreateTextureFromSurface(renderer, image);
-                        if (texture == null) {
-                            c.SDL_LogError(c.SDL_LOG_CATEGORY_APPLICATION, "Couldn't create texture from surface: %s", c.SDL_GetError());
-                        }
-                        newW = @intCast(u32, image.?.w);
-                        newH = @intCast(u32, image.?.h);
-                        c.SDL_FreeSurface(image);
+            var srcPath = element.getAttribute("src");
+            if (srcPath.len > 0) {
+                const new_path: []const u8 = try std.mem.concat(allocator, u8, &[_][]const u8{ "src/", srcPath });
+                const new_path_null_term: [:0]const u8 = try allocator.dupeZ(u8, new_path);
+                var new_path_c: [*c]const u8 = @ptrCast([*c]const u8, new_path_null_term);
+                const image: ?*c.SDL_Surface = c.IMG_Load(new_path_c);
+                if (image == null) {
+                    const err: [*c]const u8 = c.IMG_GetError();
+                    std.log.info("{any}", .{std.mem.span(err)});
+                } else {
+                    texture = c.SDL_CreateTextureFromSurface(renderer, image);
+                    if (texture == null) {
+                        c.SDL_LogError(c.SDL_LOG_CATEGORY_APPLICATION, "Couldn't create texture from surface: %s", c.SDL_GetError());
                     }
+                    newW = @intCast(u32, image.?.w);
+                    newH = @intCast(u32, image.?.h);
+                    c.SDL_FreeSurface(image);
                 }
             }
         }

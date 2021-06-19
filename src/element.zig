@@ -14,3 +14,12 @@ node: Node,
 innerHTML: []u8,
 
 outerHTML: []u8,
+
+pub fn getAttribute(this: *Element, attribute: []const u8) []const u8 {
+    for (this.attributes.items) |attr| {
+        if (std.mem.eql(u8, attribute, attr.name)) {
+            return attr.value;
+        }
+    }
+    return "";
+}
