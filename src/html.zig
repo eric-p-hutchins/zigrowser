@@ -4,6 +4,7 @@ const expect = testing.expect;
 const expectEqual = testing.expectEqual;
 
 const Node = @import("node.zig");
+const Attr = @import("attr.zig");
 const EventTarget = @import("eventtarget.zig");
 const Element = @import("element.zig");
 
@@ -26,6 +27,11 @@ pub const HtmlElement = struct {
         this.allocator.free(this.element.node.nodeName);
         this.allocator.free(this.element.outerHTML);
         this.allocator.free(this.element.innerHTML);
+        for (this.element.attributes.items) |attr| {
+            this.allocator.free(attr.name);
+            this.allocator.free(attr.value);
+        }
+        this.element.attributes.deinit();
         for (this.element.node.childNodes.items) |item| {
             if (item.nodeType == 1) {
                 var element: *Element = @fieldParentPtr(Element, "node", item);
@@ -82,7 +88,14 @@ pub const HtmlElement = struct {
         var nodeType: u4 = 1;
         var inTag: bool = false;
         var childNodes = ArrayList(*Node).init(allocator);
+        var attributes: ArrayList(Attr) = ArrayList(Attr).init(allocator);
         var tagStart: u32 = 0;
+        var tagNameEnd: ?usize = null;
+        var attributeStart: ?usize = null;
+        var attributeEnd: ?usize = null;
+        var valueStart: ?usize = null;
+        var valueEnd: ?usize = null;
+        var attribute: ?Attr = null;
         var i: u32 = 0;
         while (i < file.len) : (i += 1) {
             var char: []const u8 = file[i .. i + 1];
@@ -125,27 +138,107 @@ pub const HtmlElement = struct {
                         continue;
                     }
                 }
-            } else {
+            } else { // inTag
                 try outerHTML.append(file[i]);
-                if (byte == '>') {
-                    inTag = false;
-                    if (file[tagStart + 1] == '!') {
+                switch (byte) {
+                    '!' => { // <!DOCTYPE html>
+                        while (file[i] != '>') : (i += 1) {}
                         outerTagName = "html";
                         nodeType = 10;
                         break;
-                    } else if (file[tagStart + 1] != '/') {
-                        var tagNameEnd: usize = tagStart + 1;
-                        while (file.len > tagNameEnd + 1 and file[tagNameEnd + 1] != ' ' and file[tagNameEnd + 1] != '>') : (tagNameEnd += 1) {}
-                        if (outerTag == null) {
-                            outerTag = file[tagStart .. i + 1];
-                            outerTagName = file[tagStart + 1 .. tagNameEnd + 1];
-                            if (std.mem.eql(u8, "img", outerTagName.?)) {
-                                break;
-                            } else if (std.mem.eql(u8, "br", outerTagName.?)) {
-                                break;
+                    },
+                    ' ' => {
+                        if ((valueStart != null and valueEnd != null) or valueStart == null) {
+                            if (tagNameEnd == null) {
+                                tagNameEnd = i;
+                            }
+                            if (attributeStart != null) {
+                                if (attributeEnd == null) {
+                                    attributeEnd = i;
+                                }
+                                if (valueStart != null and valueEnd != null) {
+                                    attribute = Attr{
+                                        .name = try std.mem.dupe(allocator, u8, file[attributeStart.?..attributeEnd.?]),
+                                        .value = try std.mem.dupe(allocator, u8, file[valueStart.?..valueEnd.?]),
+                                    };
+                                } else {
+                                    attribute = Attr{
+                                        .name = try std.mem.dupe(allocator, u8, file[attributeStart.?..attributeEnd.?]),
+                                        .value = try std.mem.dupe(allocator, u8, ""),
+                                    };
+                                }
+                                try attributes.append(attribute.?);
+                                attributeStart = null;
+                                attributeEnd = null;
+                                valueStart = null;
+                                valueEnd = null;
                             }
                         }
-                    }
+                    },
+                    '=' => {
+                        if (attributeStart != null and attributeEnd == null) {
+                            attributeEnd = i;
+                        }
+                    },
+                    '"' => {
+                        if (valueStart == null) {
+                            valueStart = i + 1;
+                        } else {
+                            valueEnd = i;
+                        }
+                    },
+                    '/' => {
+                        // closing tag
+                    },
+                    '>' => {
+                        if ((valueStart != null and valueEnd != null) or valueStart == null) {
+                            if (tagNameEnd == null) {
+                                tagNameEnd = i;
+                            }
+                            if (attributeStart != null) {
+                                if (attributeEnd == null) {
+                                    attributeEnd = i;
+                                }
+                                if (valueStart != null and valueEnd != null) {
+                                    attribute = Attr{
+                                        .name = try std.mem.dupe(allocator, u8, file[attributeStart.?..attributeEnd.?]),
+                                        .value = try std.mem.dupe(allocator, u8, file[valueStart.?..valueEnd.?]),
+                                    };
+                                } else {
+                                    attribute = Attr{
+                                        .name = try std.mem.dupe(allocator, u8, file[attributeStart.?..attributeEnd.?]),
+                                        .value = try std.mem.dupe(allocator, u8, ""),
+                                    };
+                                }
+                                try attributes.append(attribute.?);
+                                attributeStart = null;
+                                attributeEnd = null;
+                                valueStart = null;
+                                valueEnd = null;
+                            }
+                        }
+
+                        inTag = false;
+                        if (file[tagStart + 1] != '/') {
+                            if (tagNameEnd == null) {
+                                tagNameEnd = i;
+                            }
+                            if (outerTag == null) {
+                                outerTag = file[tagStart .. i + 1];
+                                outerTagName = file[tagStart + 1 .. tagNameEnd.?];
+                                if (std.mem.eql(u8, "img", outerTagName.?)) {
+                                    break;
+                                } else if (std.mem.eql(u8, "br", outerTagName.?)) {
+                                    break;
+                                }
+                            }
+                        }
+                    },
+                    else => {
+                        if (tagNameEnd != null and attributeStart == null) {
+                            attributeStart = i;
+                        }
+                    },
                 }
             }
         }
@@ -175,6 +268,7 @@ pub const HtmlElement = struct {
         elementMemory.* = HtmlElement{
             .allocator = allocator,
             .element = Element{
+                .attributes = attributes,
                 .node = Node{
                     .eventTarget = try EventTarget.init(allocator),
                     .isConnected = true,
@@ -223,4 +317,29 @@ test "An HTML element" {
     try expect(std.mem.eql(u8, "<html>\n    <body>\n        Welcome to Zigrowser.\n    </body>\n</html>", htmlElement.element.outerHTML));
     try expect(std.mem.eql(u8, "\n    <body>\n        Welcome to Zigrowser.\n    </body>\n", htmlElement.element.innerHTML));
     try expectEqual(@intCast(usize, 3), htmlElement.element.node.childNodes.items.len);
+}
+
+test "HTML attributes" {
+    var htmlElement: *HtmlElement = try HtmlElement.parse(testing.allocator,
+        \\<div id="test" class="awesome" style="margin: 8px; border: 1px solid black"></div>
+    );
+    defer htmlElement.deinit();
+
+    var foundId: ?[]u8 = null;
+    var foundClass: ?[]u8 = null;
+    var foundStyle: ?[]u8 = null;
+
+    for (htmlElement.element.attributes.items) |attr| {
+        if (std.mem.eql(u8, "id", attr.name)) {
+            foundId = attr.value;
+        } else if (std.mem.eql(u8, "class", attr.name)) {
+            foundClass = attr.value;
+        } else if (std.mem.eql(u8, "style", attr.name)) {
+            foundStyle = attr.value;
+        }
+    }
+
+    try expect(std.mem.eql(u8, "test", foundId.?));
+    try expect(std.mem.eql(u8, "awesome", foundClass.?));
+    try expect(std.mem.eql(u8, "margin: 8px; border: 1px solid black", foundStyle.?));
 }
