@@ -93,17 +93,18 @@ pub const Layout = struct {
         var ruleSet = &compositeCssRuleSet.ruleSet;
         defer compositeCssRuleSet.ruleSet.deinit();
 
+        const document: ?*Document = node.ownerDocument;
+        if (document != null) {
+            var documentRuleSet: *CssRuleSet = document.?.cssRuleSet;
+            try compositeCssRuleSet.addRuleSet(documentRuleSet);
+        }
+
         if (node.nodeType == 1) {
             var element = @fieldParentPtr(Element, "node", node);
             var htmlElement = @fieldParentPtr(HtmlElement, "element", element);
             try compositeCssRuleSet.addRuleSet(htmlElement.style);
         }
 
-        const document: ?*Document = node.ownerDocument;
-        if (document != null) {
-            var documentRuleSet: *CssRuleSet = document.?.cssRuleSet;
-            try compositeCssRuleSet.addRuleSet(documentRuleSet);
-        }
         var declarations: ArrayList(CssDeclaration) = try ruleSet.getDeclarations(node, allocator);
         for (declarations.items) |declaration| {
             if (std.mem.eql(u8, "width", declaration.property)) {

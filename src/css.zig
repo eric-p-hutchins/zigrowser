@@ -440,6 +440,16 @@ pub const GenericCssRuleSet = struct {
 
         var declarations: ArrayList(Declaration) = ArrayList(Declaration).init(allocator);
 
+        if (std.mem.eql(u8, "BODY", node.nodeName)) {
+            const bodyDeclarations = genericCssRuleSet.selectorToDeclarationMap.get("BODY");
+            if (bodyDeclarations != null) {
+                for (bodyDeclarations.?.items) |declaration| {
+                    try declarations.append(declaration.*);
+                }
+            }
+        }
+
+        // TODO: This needs to be generalized to inherit certain properties from any parent node, not just body
         var descendentOfBody: bool = false;
         var currentNode: ?*Node = node;
         while (currentNode != null) : (currentNode = currentNode.?.parentNode) {
@@ -448,13 +458,16 @@ pub const GenericCssRuleSet = struct {
                 break;
             }
         }
-
-        // TODO: This needs to be generalized to work for more than just body
         if (descendentOfBody) {
             const bodyDeclarations = genericCssRuleSet.selectorToDeclarationMap.get("BODY");
             if (bodyDeclarations != null) {
                 for (bodyDeclarations.?.items) |declaration| {
-                    try declarations.append(declaration.*);
+                    // TODO: Add infrastructure for specifying which properties are inherited or not
+                    //
+                    // background-color is not while color is, etc.
+                    if (std.mem.eql(u8, "color", declaration.property)) {
+                        try declarations.append(declaration.*);
+                    }
                 }
             }
         }
