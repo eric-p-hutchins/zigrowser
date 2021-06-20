@@ -48,19 +48,19 @@ Most of the things on the TODO list so far will get me to being able to produce 
 
 ## TODO ##
 
-* Parse attributes and store the style information somewhere
-* Parse the `<style>` block in the header of the welcome page:
-  * `background-color: #131315;`
-  * `color: white;`
-  * `font-family`, `font-size`, and the `@font-face` loading of the font I currently get for free because I
-    use the given values as browser defaults, which I will leave alone for now
 * Use style info from `<body>` for `margin`
-* Use style info from `<div>` for `padding`, `margin`, `background-color`, `border`, and `text-align`
-* Use style info from `<img>` for `width` and `margin-bottom`
+* Use style info from `<div>` for `padding`, `margin`, ~`background-color`~, `border`, and `text-align`
+* Use style info from `<img>` for ~`width`~ and `margin-bottom`
 * Make welcome page officially have URL of `zigrowser://welcome`, make `zigrowser://zigrowser.png` resolve to
   the image, and make the `src=...` attribute of the `<img>` in the welcome page point to `/zigrowser.png`
 * Add an address bar for browsing
 * Implement `file:///` protocol for local browsing
 * Implement `http://` protocol and test with `http://zig.show` so that I can continue to pretend that
   "PressStart2P" is a reasonable choice for a default font ;-P
+* ~Parse the `<style>` block in the header of the welcome page:~
+  * ~`background-color: #131315;`~
+  * ~`color: white;`~
+  * ~`font-family`, `font-size`, and the `@font-face` loading of the font I currently get for free because I
+    use the given values as browser defaults, which I will leave alone for now~
+* ~Parse attributes and store the style information somewhere~
 * ~Fix memory leaks~
