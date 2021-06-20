@@ -7,6 +7,10 @@ const Node = @import("node.zig");
 const Attr = @import("attr.zig");
 const EventTarget = @import("eventtarget.zig");
 const Element = @import("element.zig");
+const css = @import("css.zig");
+const CssRuleSet = css.RuleSet;
+const CssParser = css.CssParser;
+const GenericCssRuleSet = css.GenericCssRuleSet;
 
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
@@ -21,6 +25,7 @@ pub const HtmlElement = struct {
     allocator: *Allocator,
     element: Element,
     innerText: []u8,
+    style: *CssRuleSet,
 
     pub fn deinit(this: *This) void {
         this.allocator.free(this.innerText);
@@ -96,6 +101,7 @@ pub const HtmlElement = struct {
         var valueStart: ?usize = null;
         var valueEnd: ?usize = null;
         var attribute: ?Attr = null;
+        var styleAttribute: ?*Attr = null;
         var i: u32 = 0;
         while (i < file.len) : (i += 1) {
             var char: []const u8 = file[i .. i + 1];
@@ -168,6 +174,9 @@ pub const HtmlElement = struct {
                                     };
                                 }
                                 try attributes.append(attribute.?);
+                                if (std.mem.eql(u8, "style", attribute.?.name)) {
+                                    styleAttribute = &attribute.?;
+                                }
                                 attributeStart = null;
                                 attributeEnd = null;
                                 valueStart = null;
@@ -211,6 +220,9 @@ pub const HtmlElement = struct {
                                     };
                                 }
                                 try attributes.append(attribute.?);
+                                if (std.mem.eql(u8, "style", attribute.?.name)) {
+                                    styleAttribute = &attribute.?;
+                                }
                                 attributeStart = null;
                                 attributeEnd = null;
                                 valueStart = null;
@@ -264,6 +276,13 @@ pub const HtmlElement = struct {
             }
         }
 
+        var elementStyle: *CssRuleSet = undefined;
+        if (styleAttribute != null) {
+            elementStyle = try CssParser.parse(allocator, styleAttribute.?.value, true);
+        } else {
+            var genericCssRuleSet = try GenericCssRuleSet.init(allocator);
+            elementStyle = &genericCssRuleSet.ruleSet;
+        }
         var elementMemory = try allocator.create(HtmlElement);
         elementMemory.* = HtmlElement{
             .allocator = allocator,
@@ -280,6 +299,7 @@ pub const HtmlElement = struct {
                 .innerHTML = try allocator.dupe(u8, innerHTML.items),
             },
             .innerText = try allocator.dupe(u8, text.items),
+            .style = elementStyle,
         };
 
         for (childNodes.items) |node| {

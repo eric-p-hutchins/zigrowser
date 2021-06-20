@@ -119,12 +119,12 @@ pub const Declaration = struct {
 };
 
 pub const CssParser = struct {
-    pub fn parse(allocator: *Allocator, text: []const u8) !*RuleSet {
+    pub fn parse(allocator: *Allocator, text: []const u8, noBlock: bool) !*RuleSet {
         var genericRuleSet = try GenericCssRuleSet.init(allocator);
 
         var inAtRule: bool = false;
-        var inBlock: bool = false;
-        var inProperty: bool = false;
+        var inBlock: bool = noBlock;
+        var inProperty: bool = noBlock;
         var inValue: bool = false;
 
         var selector = ArrayList(u8).init(allocator);
@@ -158,7 +158,49 @@ pub const CssParser = struct {
                     if (byte == ';') {
                         inValue = false;
                         var upperSelector = try std.ascii.allocUpperString(allocator, selector.items);
-                        if (std.mem.eql(u8, "background-color", property.items) or std.mem.eql(u8, "color", property.items)) {
+                        if (std.mem.eql(u8, "width", property.items)) {
+                            if (value.items.len > 1 and value.items[value.items.len - 1] == '%') {
+                                var int_val: ?i64 = null;
+                                var float_val: ?f64 = null;
+                                int_val = std.fmt.parseInt(i64, value.items[0 .. value.items.len - 1], 10) catch null;
+                                if (int_val == null) {
+                                    float_val = try std.fmt.parseFloat(f64, value.items[0 .. value.items.len - 1]);
+                                }
+                                if (int_val != null) {
+                                    var declaration = Declaration{
+                                        .property = property.items,
+                                        .value = CssValue{ .length = CssLengthType{ .value = CssNumber{ .int = int_val.? }, .unit = .percent } },
+                                    };
+                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                                } else if (float_val != null) {
+                                    var declaration = Declaration{
+                                        .property = property.items,
+                                        .value = CssValue{ .length = CssLengthType{ .value = CssNumber{ .float = float_val.? }, .unit = .percent } },
+                                    };
+                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                                }
+                            } else if (value.items.len > 2 and value.items[value.items.len - 2] == 'p' and value.items[value.items.len - 1] == 'x') {
+                                var int_val: ?i64 = null;
+                                var float_val: ?f64 = null;
+                                int_val = std.fmt.parseInt(i64, value.items[0 .. value.items.len - 2], 10) catch null;
+                                if (int_val == null) {
+                                    float_val = try std.fmt.parseFloat(f64, value.items[0 .. value.items.len - 2]);
+                                }
+                                if (int_val != null) {
+                                    var declaration = Declaration{
+                                        .property = property.items,
+                                        .value = CssValue{ .length = CssLengthType{ .value = CssNumber{ .int = int_val.? }, .unit = .px } },
+                                    };
+                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                                } else if (float_val != null) {
+                                    var declaration = Declaration{
+                                        .property = property.items,
+                                        .value = CssValue{ .length = CssLengthType{ .value = CssNumber{ .float = float_val.? }, .unit = .px } },
+                                    };
+                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                                }
+                            }
+                        } else if (std.mem.eql(u8, "background-color", property.items) or std.mem.eql(u8, "color", property.items)) {
                             if (value.items[0] == '#') {
                                 var hex1 = value.items[1];
                                 var hex2 = value.items[2];
@@ -417,23 +459,36 @@ pub const GenericCssRuleSet = struct {
             }
         }
 
+        const noBlockDeclarations = genericCssRuleSet.selectorToDeclarationMap.get("");
+        if (noBlockDeclarations != null) {
+            for (noBlockDeclarations.?.items) |declaration| {
+                try declarations.append(declaration.*);
+            }
+        }
+
         return declarations;
     }
 };
 
 pub const CompositeCssRuleSet = struct {
-    pub fn init(allocator: *Allocator) !CompositeCssRuleSet {
-        return CompositeCssRuleSet{
+    allocator: *Allocator,
+    ruleSets: ArrayList(*RuleSet),
+    ruleSet: RuleSet = RuleSet{
+        .getDeclarationsFn = CompositeCssRuleSet.getDeclarations,
+        .deinitFn = CompositeCssRuleSet.deinit,
+    },
+
+    pub fn init(allocator: *Allocator) !*CompositeCssRuleSet {
+        var ruleSet = try allocator.create(CompositeCssRuleSet);
+        ruleSet.* = CompositeCssRuleSet{
             .allocator = allocator,
             .ruleSets = ArrayList(*RuleSet).init(allocator),
         };
+        return ruleSet;
     }
 
-    pub fn deinit(this: *RuleSet) void {
+    fn deinit(this: *RuleSet) void {
         var composite: *CompositeCssRuleSet = @fieldParentPtr(CompositeCssRuleSet, "ruleSet", this);
-        for (composite.ruleSets.items) |ruleSet, i| {
-            ruleSet.deinit();
-        }
         composite.ruleSets.deinit();
         composite.allocator.destroy(composite);
     }
@@ -455,13 +510,6 @@ pub const CompositeCssRuleSet = struct {
         }
         return declarations;
     }
-
-    allocator: *Allocator,
-    ruleSets: ArrayList(*RuleSet),
-    ruleSet: RuleSet = RuleSet{
-        .getDeclarationsFn = CompositeCssRuleSet.getDeclarations,
-        .deinitFn = CompositeCssRuleSet.deinit,
-    },
 };
 
 test "CSS length" {

@@ -36,6 +36,8 @@ node: Node,
 head: *HtmlElement,
 body: *HtmlElement,
 
+userAgentRuleSet: *UserAgentCssRuleSet,
+styleElementRuleSets: ArrayList(*CssRuleSet),
 cssRuleSet: *CssRuleSet,
 
 fn findStyleElements(allocator: *Allocator, node: *Node) anyerror!*ArrayList(*const Node) {
@@ -85,17 +87,18 @@ pub fn init(allocator: *Allocator, string: []const u8) !*Document {
         }
     }
 
-    var ruleSet: *CompositeCssRuleSet = try allocator.create(CompositeCssRuleSet);
-    ruleSet.* = try CompositeCssRuleSet.init(allocator);
+    var ruleSet: *CompositeCssRuleSet = try CompositeCssRuleSet.init(allocator);
 
     var userAgentRuleSet = try UserAgentCssRuleSet.init(allocator);
     try ruleSet.addRuleSet(&userAgentRuleSet.ruleSet);
 
     var styleElements = try findStyleElements(allocator, &documentElement.?.element.node);
 
+    var styleElementRuleSets = ArrayList(*CssRuleSet).init(allocator);
     for (styleElements.items) |styleNode| {
         var element = @fieldParentPtr(Element, "node", styleNode);
-        var elementRuleSet = try CssParser.parse(allocator, element.innerHTML);
+        var elementRuleSet = try CssParser.parse(allocator, element.innerHTML, false);
+        try styleElementRuleSets.append(elementRuleSet);
         try ruleSet.addRuleSet(elementRuleSet);
     }
 
@@ -104,6 +107,8 @@ pub fn init(allocator: *Allocator, string: []const u8) !*Document {
 
     const document: *Document = try allocator.create(Document);
     document.* = Document{
+        .userAgentRuleSet = userAgentRuleSet,
+        .styleElementRuleSets = styleElementRuleSets,
         .cssRuleSet = &ruleSet.ruleSet,
         .doctypeElement = doctypeElement,
         .htmlElement = documentElement.?,
@@ -123,6 +128,10 @@ pub fn init(allocator: *Allocator, string: []const u8) !*Document {
 }
 
 pub fn deinit(self: *Document, allocator: *Allocator) void {
+    self.userAgentRuleSet.ruleSet.deinit();
+    for (self.styleElementRuleSets.items) |ruleSet| {
+        ruleSet.deinit();
+    }
     if (self.doctypeElement != null) {
         self.doctypeElement.?.deinit();
     }
