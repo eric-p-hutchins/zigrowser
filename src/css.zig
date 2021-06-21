@@ -119,6 +119,119 @@ pub const Declaration = struct {
 };
 
 pub const CssParser = struct {
+    fn parseColor(value: []const u8) ?CssValue {
+        if (value[0] == '#') {
+            var hex1 = value[1];
+            var hex2 = value[2];
+            var hex3 = value[3];
+            var hex4 = value[4];
+            var hex5 = value[5];
+            var hex6 = value[6];
+            var d1: u8 = 0;
+            var d2: u8 = 0;
+            var d3: u8 = 0;
+            if (hex1 >= 'a' and hex1 <= 'f') {
+                d1 = 16 * (10 + (hex1 - 'a'));
+            } else if (hex1 >= 'A' and hex1 <= 'F') {
+                d1 = 16 * (10 + (hex1 - 'A'));
+            } else if (hex1 >= '0' and hex1 <= '9') {
+                d1 = 16 * (hex1 - '0');
+            }
+            if (hex2 >= 'a' and hex2 <= 'f') {
+                d1 += 10 + (hex2 - 'a');
+            } else if (hex2 >= 'A' and hex2 <= 'F') {
+                d1 += 10 + (hex2 - 'A');
+            } else if (hex2 >= '0' and hex2 <= '9') {
+                d1 += hex2 - '0';
+            }
+            if (hex3 >= 'a' and hex3 <= 'f') {
+                d2 = 16 * (10 + (hex3 - 'a'));
+            } else if (hex3 >= 'A' and hex3 <= 'F') {
+                d2 = 16 * (10 + (hex3 - 'A'));
+            } else if (hex3 >= '0' and hex3 <= '9') {
+                d2 = 16 * (hex3 - '0');
+            }
+            if (hex4 >= 'a' and hex4 <= 'f') {
+                d2 += 10 + (hex4 - 'a');
+            } else if (hex4 >= 'A' and hex4 <= 'F') {
+                d2 += 10 + (hex4 - 'A');
+            } else if (hex4 >= '0' and hex4 <= '9') {
+                d2 += hex4 - '0';
+            }
+            if (hex5 >= 'a' and hex5 <= 'f') {
+                d3 = 16 * (10 + (hex5 - 'a'));
+            } else if (hex5 >= 'A' and hex5 <= 'F') {
+                d3 = 16 * (10 + (hex5 - 'A'));
+            } else if (hex5 >= '0' and hex5 <= '9') {
+                d3 = 16 * (hex5 - '0');
+            }
+            if (hex6 >= 'a' and hex6 <= 'f') {
+                d3 += 10 + (hex6 - 'a');
+            } else if (hex6 >= 'A' and hex6 <= 'F') {
+                d3 += 10 + (hex6 - 'A');
+            } else if (hex6 >= '0' and hex6 <= '9') {
+                d3 += hex6 - '0';
+            }
+
+            return CssValue{
+                .color = CssColor{
+                    .rgb = CssRgbColor{ .r = d1, .g = d2, .b = d3 },
+                },
+            };
+        } else {
+            for (std.enums.values(CssColorKeyword)) |keyword| {
+                if (std.mem.eql(u8, @tagName(keyword), value)) {
+                    return CssValue{ .color = CssColor{ .keyword = keyword } };
+                }
+            }
+        }
+        return null;
+    }
+
+    pub fn parseLength(value: []const u8) !?CssValue {
+        if (value.len > 1 and value[value.len - 1] == '%') {
+            var int_val: ?i64 = null;
+            var float_val: ?f64 = null;
+            int_val = std.fmt.parseInt(i64, value[0 .. value.len - 1], 10) catch null;
+            if (int_val == null) {
+                float_val = try std.fmt.parseFloat(f64, value[0 .. value.len - 1]);
+            }
+            if (int_val != null) {
+                return CssValue{ .length = CssLengthType{ .value = CssNumber{ .int = int_val.? }, .unit = .percent } };
+            } else if (float_val != null) {
+                return CssValue{ .length = CssLengthType{ .value = CssNumber{ .float = float_val.? }, .unit = .percent } };
+            }
+        } else if (value.len > 2 and value[value.len - 2] == 'p' and value[value.len - 1] == 'x') {
+            var int_val: ?i64 = null;
+            var float_val: ?f64 = null;
+            int_val = std.fmt.parseInt(i64, value[0 .. value.len - 2], 10) catch null;
+            if (int_val == null) {
+                float_val = try std.fmt.parseFloat(f64, value[0 .. value.len - 2]);
+            }
+            if (int_val != null) {
+                return CssValue{ .length = CssLengthType{ .value = CssNumber{ .int = int_val.? }, .unit = .px } };
+            } else if (float_val != null) {
+                return CssValue{ .length = CssLengthType{ .value = CssNumber{ .float = float_val.? }, .unit = .px } };
+            }
+        }
+        return null;
+    }
+
+    fn isLengthType(property: []const u8) bool {
+        if (std.mem.eql(u8, "width", property)) return true;
+        if (std.mem.eql(u8, "margin", property)) return true;
+        if (std.mem.eql(u8, "margin-top", property)) return true;
+        if (std.mem.eql(u8, "margin-left", property)) return true;
+        if (std.mem.eql(u8, "margin-bottom", property)) return true;
+        if (std.mem.eql(u8, "margin-right", property)) return true;
+        if (std.mem.eql(u8, "padding", property)) return true;
+        if (std.mem.eql(u8, "padding-top", property)) return true;
+        if (std.mem.eql(u8, "padding-left", property)) return true;
+        if (std.mem.eql(u8, "padding-bottom", property)) return true;
+        if (std.mem.eql(u8, "padding-right", property)) return true;
+        return false;
+    }
+
     pub fn parse(allocator: *Allocator, text: []const u8, noBlock: bool) !*RuleSet {
         var genericRuleSet = try GenericCssRuleSet.init(allocator);
 
@@ -157,122 +270,29 @@ pub const CssParser = struct {
                 } else {
                     if (byte == ';') {
                         inValue = false;
+
                         var upperSelector = try std.ascii.allocUpperString(allocator, selector.items);
-                        if (std.mem.eql(u8, "width", property.items)) {
-                            if (value.items.len > 1 and value.items[value.items.len - 1] == '%') {
-                                var int_val: ?i64 = null;
-                                var float_val: ?f64 = null;
-                                int_val = std.fmt.parseInt(i64, value.items[0 .. value.items.len - 1], 10) catch null;
-                                if (int_val == null) {
-                                    float_val = try std.fmt.parseFloat(f64, value.items[0 .. value.items.len - 1]);
-                                }
-                                if (int_val != null) {
-                                    var declaration = Declaration{
-                                        .property = property.items,
-                                        .value = CssValue{ .length = CssLengthType{ .value = CssNumber{ .int = int_val.? }, .unit = .percent } },
-                                    };
-                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
-                                } else if (float_val != null) {
-                                    var declaration = Declaration{
-                                        .property = property.items,
-                                        .value = CssValue{ .length = CssLengthType{ .value = CssNumber{ .float = float_val.? }, .unit = .percent } },
-                                    };
-                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
-                                }
-                            } else if (value.items.len > 2 and value.items[value.items.len - 2] == 'p' and value.items[value.items.len - 1] == 'x') {
-                                var int_val: ?i64 = null;
-                                var float_val: ?f64 = null;
-                                int_val = std.fmt.parseInt(i64, value.items[0 .. value.items.len - 2], 10) catch null;
-                                if (int_val == null) {
-                                    float_val = try std.fmt.parseFloat(f64, value.items[0 .. value.items.len - 2]);
-                                }
-                                if (int_val != null) {
-                                    var declaration = Declaration{
-                                        .property = property.items,
-                                        .value = CssValue{ .length = CssLengthType{ .value = CssNumber{ .int = int_val.? }, .unit = .px } },
-                                    };
-                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
-                                } else if (float_val != null) {
-                                    var declaration = Declaration{
-                                        .property = property.items,
-                                        .value = CssValue{ .length = CssLengthType{ .value = CssNumber{ .float = float_val.? }, .unit = .px } },
-                                    };
-                                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
-                                }
+                        errdefer allocator.free(upperSelector);
+
+                        if (isLengthType(property.items)) {
+                            var cssValue = try parseLength(value.items);
+                            if (cssValue) |cssVal| {
+                                var declaration: Declaration = Declaration{
+                                    .property = property.items,
+                                    .value = cssVal,
+                                };
+
+                                try genericRuleSet.addDeclaration(upperSelector, &declaration);
                             }
                         } else if (std.mem.eql(u8, "background-color", property.items) or std.mem.eql(u8, "color", property.items)) {
-                            if (value.items[0] == '#') {
-                                var hex1 = value.items[1];
-                                var hex2 = value.items[2];
-                                var hex3 = value.items[3];
-                                var hex4 = value.items[4];
-                                var hex5 = value.items[5];
-                                var hex6 = value.items[6];
-                                var d1: u8 = 0;
-                                var d2: u8 = 0;
-                                var d3: u8 = 0;
-                                if (hex1 >= 'a' and hex1 <= 'f') {
-                                    d1 = 16 * (10 + (hex1 - 'a'));
-                                } else if (hex1 >= 'A' and hex1 <= 'F') {
-                                    d1 = 16 * (10 + (hex1 - 'A'));
-                                } else if (hex1 >= '0' and hex1 <= '9') {
-                                    d1 = 16 * (hex1 - '0');
-                                }
-                                if (hex2 >= 'a' and hex2 <= 'f') {
-                                    d1 += 10 + (hex2 - 'a');
-                                } else if (hex2 >= 'A' and hex2 <= 'F') {
-                                    d1 += 10 + (hex2 - 'A');
-                                } else if (hex2 >= '0' and hex2 <= '9') {
-                                    d1 += hex2 - '0';
-                                }
-                                if (hex3 >= 'a' and hex3 <= 'f') {
-                                    d2 = 16 * (10 + (hex3 - 'a'));
-                                } else if (hex3 >= 'A' and hex3 <= 'F') {
-                                    d2 = 16 * (10 + (hex3 - 'A'));
-                                } else if (hex3 >= '0' and hex3 <= '9') {
-                                    d2 = 16 * (hex3 - '0');
-                                }
-                                if (hex4 >= 'a' and hex4 <= 'f') {
-                                    d2 += 10 + (hex4 - 'a');
-                                } else if (hex4 >= 'A' and hex4 <= 'F') {
-                                    d2 += 10 + (hex4 - 'A');
-                                } else if (hex4 >= '0' and hex4 <= '9') {
-                                    d2 += hex4 - '0';
-                                }
-                                if (hex5 >= 'a' and hex5 <= 'f') {
-                                    d3 = 16 * (10 + (hex5 - 'a'));
-                                } else if (hex5 >= 'A' and hex5 <= 'F') {
-                                    d3 = 16 * (10 + (hex5 - 'A'));
-                                } else if (hex5 >= '0' and hex5 <= '9') {
-                                    d3 = 16 * (hex5 - '0');
-                                }
-                                if (hex6 >= 'a' and hex6 <= 'f') {
-                                    d3 += 10 + (hex6 - 'a');
-                                } else if (hex6 >= 'A' and hex6 <= 'F') {
-                                    d3 += 10 + (hex6 - 'A');
-                                } else if (hex6 >= '0' and hex6 <= '9') {
-                                    d3 += hex6 - '0';
-                                }
-
-                                var declaration = Declaration{
+                            var cssValue = parseColor(value.items);
+                            if (cssValue) |cssVal| {
+                                var declaration: Declaration = Declaration{
                                     .property = property.items,
-                                    .value = CssValue{
-                                        .color = CssColor{
-                                            .rgb = CssRgbColor{ .r = d1, .g = d2, .b = d3 },
-                                        },
-                                    },
+                                    .value = cssVal,
                                 };
+
                                 try genericRuleSet.addDeclaration(upperSelector, &declaration);
-                            } else {
-                                for (std.enums.values(CssColorKeyword)) |keyword| {
-                                    if (std.mem.eql(u8, @tagName(keyword), value.items)) {
-                                        var declaration = Declaration{
-                                            .property = property.items,
-                                            .value = CssValue{ .color = CssColor{ .keyword = keyword } },
-                                        };
-                                        try genericRuleSet.addDeclaration(upperSelector, &declaration);
-                                    }
-                                }
                             }
                         }
                         allocator.free(upperSelector);
@@ -284,6 +304,39 @@ pub const CssParser = struct {
                     }
                 }
             }
+        }
+
+        if (inValue) {
+            inValue = false;
+
+            var upperSelector = try std.ascii.allocUpperString(allocator, selector.items);
+            errdefer allocator.free(upperSelector);
+
+            if (std.mem.eql(u8, "width", property.items) or std.mem.eql(u8, "margin", property.items)) {
+                var cssValue = try parseLength(value.items);
+                if (cssValue) |cssVal| {
+                    var declaration: Declaration = Declaration{
+                        .property = property.items,
+                        .value = cssVal,
+                    };
+
+                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                }
+            } else if (std.mem.eql(u8, "background-color", property.items) or std.mem.eql(u8, "color", property.items)) {
+                var cssValue = parseColor(value.items);
+                if (cssValue) |cssVal| {
+                    var declaration: Declaration = Declaration{
+                        .property = property.items,
+                        .value = cssVal,
+                    };
+
+                    try genericRuleSet.addDeclaration(upperSelector, &declaration);
+                }
+            }
+            allocator.free(upperSelector);
+            property.clearRetainingCapacity();
+            value.clearRetainingCapacity();
+            inProperty = true;
         }
 
         selector.deinit();

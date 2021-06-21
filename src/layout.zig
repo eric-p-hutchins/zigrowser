@@ -43,6 +43,10 @@ pub const Layout = struct {
     marginBottom: i32 = 0,
     marginLeft: i32 = 0,
     marginRight: i32 = 0,
+    paddingTop: i32 = 0,
+    paddingBottom: i32 = 0,
+    paddingLeft: i32 = 0,
+    paddingRight: i32 = 0,
     texture: ?*c.SDL_Texture = null,
 
     pub fn init(allocator: *Allocator, renderer: *c.SDL_Renderer, fonts: *Fonts, node: *Node, x: i32, y: i32, w: u32, h: u32) !Layout {
@@ -53,6 +57,10 @@ pub const Layout = struct {
         var marginBottom: i32 = 0;
         var marginLeft: i32 = 0;
         var marginRight: i32 = 0;
+        var paddingTop: i32 = 0;
+        var paddingBottom: i32 = 0;
+        var paddingLeft: i32 = 0;
+        var paddingRight: i32 = 0;
 
         var backgroundColor: ?CssRgbColor = null;
         var textColor: CssRgbColor = CssRgbColor{ .r = 0, .g = 0, .b = 0 };
@@ -143,13 +151,11 @@ pub const Layout = struct {
                 switch (declaration.value) {
                     CssValueType.length => |length| {
                         switch (length.unit) {
-                            CssLengthUnit.px => {
-                                switch (length.value) {
-                                    CssNumber.int => |int_length| {
-                                        marginTop = @intCast(i32, int_length);
-                                    },
-                                    CssNumber.float => |float_length| {},
-                                }
+                            CssLengthUnit.px => switch (length.value) {
+                                CssNumber.int => |int_length| {
+                                    marginTop = @intCast(i32, int_length);
+                                },
+                                CssNumber.float => |float_length| {},
                             },
                             else => {},
                         }
@@ -160,13 +166,11 @@ pub const Layout = struct {
                 switch (declaration.value) {
                     CssValueType.length => |length| {
                         switch (length.unit) {
-                            CssLengthUnit.px => {
-                                switch (length.value) {
-                                    CssNumber.int => |int_length| {
-                                        marginLeft = @intCast(i32, int_length);
-                                    },
-                                    CssNumber.float => |float_length| {},
-                                }
+                            CssLengthUnit.px => switch (length.value) {
+                                CssNumber.int => |int_length| {
+                                    marginLeft = @intCast(i32, int_length);
+                                },
+                                CssNumber.float => |float_length| {},
                             },
                             else => {},
                         }
@@ -177,13 +181,11 @@ pub const Layout = struct {
                 switch (declaration.value) {
                     CssValueType.length => |length| {
                         switch (length.unit) {
-                            CssLengthUnit.px => {
-                                switch (length.value) {
-                                    CssNumber.int => |int_length| {
-                                        marginBottom = @intCast(i32, int_length);
-                                    },
-                                    CssNumber.float => |float_length| {},
-                                }
+                            CssLengthUnit.px => switch (length.value) {
+                                CssNumber.int => |int_length| {
+                                    marginBottom = @intCast(i32, int_length);
+                                },
+                                CssNumber.float => |float_length| {},
                             },
                             else => {},
                         }
@@ -194,13 +196,109 @@ pub const Layout = struct {
                 switch (declaration.value) {
                     CssValueType.length => |length| {
                         switch (length.unit) {
-                            CssLengthUnit.px => {
-                                switch (length.value) {
-                                    CssNumber.int => |int_length| {
-                                        marginRight = @intCast(i32, int_length);
-                                    },
-                                    CssNumber.float => |float_length| {},
-                                }
+                            CssLengthUnit.px => switch (length.value) {
+                                CssNumber.int => |int_length| {
+                                    marginRight = @intCast(i32, int_length);
+                                },
+                                CssNumber.float => |float_length| {},
+                            },
+                            else => {},
+                        }
+                    },
+                    else => {},
+                }
+            } else if (std.mem.eql(u8, "margin", declaration.property)) {
+                switch (declaration.value) {
+                    CssValueType.length => |length| {
+                        switch (length.unit) {
+                            CssLengthUnit.px => switch (length.value) {
+                                CssNumber.int => |int_length| {
+                                    var val = @intCast(i32, int_length);
+                                    marginTop = val;
+                                    marginBottom = val;
+                                    marginLeft = val;
+                                    marginRight = val;
+                                },
+                                CssNumber.float => |float_length| {},
+                            },
+                            else => {},
+                        }
+                    },
+                    else => {},
+                }
+            } else if (std.mem.eql(u8, "padding-top", declaration.property)) {
+                switch (declaration.value) {
+                    CssValueType.length => |length| {
+                        switch (length.unit) {
+                            CssLengthUnit.px => switch (length.value) {
+                                CssNumber.int => |int_length| {
+                                    paddingTop = @intCast(i32, int_length);
+                                },
+                                CssNumber.float => |float_length| {},
+                            },
+                            else => {},
+                        }
+                    },
+                    else => {},
+                }
+            } else if (std.mem.eql(u8, "padding-left", declaration.property)) {
+                switch (declaration.value) {
+                    CssValueType.length => |length| {
+                        switch (length.unit) {
+                            CssLengthUnit.px => switch (length.value) {
+                                CssNumber.int => |int_length| {
+                                    paddingLeft = @intCast(i32, int_length);
+                                },
+                                CssNumber.float => |float_length| {},
+                            },
+                            else => {},
+                        }
+                    },
+                    else => {},
+                }
+            } else if (std.mem.eql(u8, "padding-bottom", declaration.property)) {
+                switch (declaration.value) {
+                    CssValueType.length => |length| {
+                        switch (length.unit) {
+                            CssLengthUnit.px => switch (length.value) {
+                                CssNumber.int => |int_length| {
+                                    paddingBottom = @intCast(i32, int_length);
+                                },
+                                CssNumber.float => |float_length| {},
+                            },
+                            else => {},
+                        }
+                    },
+                    else => {},
+                }
+            } else if (std.mem.eql(u8, "padding-right", declaration.property)) {
+                switch (declaration.value) {
+                    CssValueType.length => |length| {
+                        switch (length.unit) {
+                            CssLengthUnit.px => switch (length.value) {
+                                CssNumber.int => |int_length| {
+                                    paddingRight = @intCast(i32, int_length);
+                                },
+                                CssNumber.float => |float_length| {},
+                            },
+                            else => {},
+                        }
+                    },
+                    else => {},
+                }
+            } else if (std.mem.eql(u8, "padding", declaration.property)) {
+                switch (declaration.value) {
+                    CssValueType.length => |length| {
+                        switch (length.unit) {
+                            CssLengthUnit.px => switch (length.value) {
+                                CssNumber.int => |int_length| {
+                                    var val = @intCast(i32, int_length);
+                                    paddingTop = val;
+                                    paddingBottom = val;
+                                    paddingLeft = val;
+                                    paddingRight = val;
+                                },
+                                CssNumber.float => |float_length| {},
                             },
                             else => {},
                         }
@@ -271,6 +369,10 @@ pub const Layout = struct {
             .marginBottom = marginBottom,
             .marginLeft = marginLeft,
             .marginRight = marginRight,
+            .paddingTop = paddingTop,
+            .paddingBottom = paddingBottom,
+            .paddingLeft = paddingLeft,
+            .paddingRight = paddingRight,
             .texture = texture,
             .backgroundColor = backgroundColor,
             .textColor = textColor,
@@ -279,10 +381,10 @@ pub const Layout = struct {
 
     pub fn draw(this: This, screen: *Screen) anyerror!void {
         if (this.backgroundColor) |backgroundColor| {
-            var x = if (screen.hiDpi) this.x * 2 else this.x;
-            var y = if (screen.hiDpi) this.y * 2 else this.y;
-            var w = if (screen.hiDpi) this.w * 2 else this.w;
-            var h = if (screen.hiDpi) this.h * 2 else this.h;
+            var x = this.x;
+            var y = this.y;
+            var w = this.w;
+            var h = this.h;
             var r = this.backgroundColor.?.r;
             var g = this.backgroundColor.?.g;
             var b = this.backgroundColor.?.b;
@@ -326,10 +428,10 @@ pub const Layout = struct {
             this.allocator.destroy(rect);
         }
 
-        var x = this.x + this.marginLeft;
-        var y = this.y + this.marginTop;
-        var w = this.w - @intCast(u32, this.marginLeft) - @intCast(u32, this.marginRight);
-        var h = this.h - @intCast(u32, this.marginTop) - @intCast(u32, this.marginBottom);
+        var x = this.x + this.marginLeft + this.paddingLeft;
+        var y = this.y + this.marginTop + this.paddingTop;
+        var w = this.w - @intCast(u32, this.paddingLeft) - @intCast(u32, this.paddingRight) - @intCast(u32, this.marginLeft) - @intCast(u32, this.marginRight);
+        var h = this.h - @intCast(u32, this.paddingTop) - @intCast(u32, this.paddingBottom) - @intCast(u32, this.marginTop) - @intCast(u32, this.marginBottom);
         var lineHeight: usize = 16;
         for (this.node.childNodes.items) |node| {
             if (this.children.get(node) == null) {
