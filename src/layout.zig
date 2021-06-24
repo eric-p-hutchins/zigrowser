@@ -13,6 +13,7 @@ const CompositeCssRuleSet = @import("css.zig").CompositeCssRuleSet;
 const CssDeclaration = @import("css.zig").Declaration;
 const CssColor = @import("css.zig").CssColor;
 const CssRgbColor = @import("css.zig").CssRgbColor;
+const CssRgbaColor = @import("css.zig").CssRgbaColor;
 const CssRuleSet = @import("css.zig").RuleSet;
 const CssNumber = @import("css.zig").CssNumber;
 const CssValueType = @import("css.zig").CssValueType;
@@ -38,8 +39,8 @@ pub const Layout = struct {
     h: u32,
     srcW: ?u32, // the src width of an image
     srcH: ?u32, // the src height of an image
-    backgroundColor: ?CssRgbColor = null,
-    textColor: CssRgbColor = CssRGBColor{ .r = 0, .g = 0, .b = 0 },
+    backgroundColor: ?CssRgbaColor = null,
+    textColor: CssRgbaColor = CssRgbaColor{ .r = 0, .g = 0, .b = 0, .a = 255 },
     marginTop: i32 = 0,
     marginBottom: i32 = 0,
     marginLeft: i32 = 0,
@@ -63,8 +64,8 @@ pub const Layout = struct {
         var paddingLeft: i32 = 0;
         var paddingRight: i32 = 0;
 
-        var backgroundColor: ?CssRgbColor = null;
-        var textColor: CssRgbColor = CssRgbColor{ .r = 0, .g = 0, .b = 0 };
+        var backgroundColor: ?CssRgbaColor = null;
+        var textColor: CssRgbaColor = CssRgbaColor{ .r = 0, .g = 0, .b = 0, .a = 255 };
 
         var newW: ?u32 = null;
         var newH: ?u32 = null;
@@ -116,7 +117,6 @@ pub const Layout = struct {
         }
 
         if (style != null) {
-            // Get width, margin, padding, background-color, and color...
             var width_str = style.?.getPropertyValue("width");
             styleW = try std.fmt.parseInt(u32, width_str[0 .. width_str.len - 2], 10);
             if (std.mem.eql(u8, "IMG", node.nodeName) and styleH == null) {
@@ -150,8 +150,9 @@ pub const Layout = struct {
 
             var color_str = style.?.getPropertyValue("color");
             var background_color_str = style.?.getPropertyValue("background-color");
-            // TODO: Parse color and background-color with the assumption that it is either rgb(n,n,n) or rgba(n,n,n,n)
-            std.debug.print("TODO: parse color {s} and background-color {s}\n", .{ color_str, background_color_str });
+
+            textColor = try CssColor.parseRgba(color_str);
+            backgroundColor = try CssColor.parseRgba(background_color_str);
         }
 
         if (std.mem.eql(u8, "#text", node.nodeName)) {
@@ -211,7 +212,8 @@ pub const Layout = struct {
     }
 
     pub fn draw(this: This, screen: *Screen) anyerror!void {
-        if (this.backgroundColor) |backgroundColor| {
+        // TODO: Figure out why alpha of 0 isn't working properly and remove this condition
+        if (this.backgroundColor != null and this.backgroundColor.?.a != 0) {
             var x = this.x;
             var y = this.y;
             var w = this.w;
@@ -219,7 +221,8 @@ pub const Layout = struct {
             var r = this.backgroundColor.?.r;
             var g = this.backgroundColor.?.g;
             var b = this.backgroundColor.?.b;
-            try screen.fillRect(x, y, w, h, r, g, b);
+            var a = this.backgroundColor.?.a;
+            try screen.fillRect(x, y, w, h, r, g, b, a);
         }
         if (this.node.textContent != null) {
             var firstNonSpace: ?usize = null;

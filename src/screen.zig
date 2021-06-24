@@ -87,11 +87,11 @@ pub const Screen = struct {
         }
     }
 
-    pub fn fillRect(this: This, x: i32, y: i32, w: u32, h: u32, r: u8, g: u8, b: u8) !void {
+    pub fn fillRect(this: This, x: i32, y: i32, w: u32, h: u32, r: u8, g: u8, b: u8, a: u8) !void {
         var arenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
         defer arenaAllocator.deinit();
 
-        _ = c.SDL_SetRenderDrawColor(this.renderer, r, g, b, c.SDL_ALPHA_OPAQUE);
+        _ = c.SDL_SetRenderDrawColor(this.renderer, r, g, b, a);
         var rect: *c.SDL_Rect = try arenaAllocator.allocator.create(c.SDL_Rect);
         rect.*.x = @intCast(c_int, x);
         rect.*.y = @intCast(c_int, y);

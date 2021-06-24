@@ -67,6 +67,13 @@ pub const CssRgbColor = struct {
     b: u8,
 };
 
+pub const CssRgbaColor = struct {
+    r: u8,
+    g: u8,
+    b: u8,
+    a: u8,
+};
+
 pub const CssTextAlign = enum {
     left,
     right,
@@ -76,6 +83,102 @@ pub const CssTextAlign = enum {
 pub const CssColor = union(enum) {
     keyword: CssColorKeyword,
     rgb: CssRgbColor,
+
+    const ParseColorError = error{
+        InvalidCharacter,
+    };
+
+    pub fn parseRgba(text: []const u8) !CssRgbaColor {
+        var in_rgb: bool = false;
+        var in_r: bool = false;
+        var in_g: bool = false;
+        var in_b: bool = false;
+        var has_a: bool = false;
+        var in_a: bool = false;
+        var done_rgb: bool = false;
+        var r: u8 = 0;
+        var g: u8 = 0;
+        var b: u8 = 0;
+        var a: u8 = 0;
+        for (text) |byte, i| {
+            switch (byte) {
+                'r' => {
+                    if (!in_rgb) {
+                        in_rgb = true;
+                    }
+                },
+                'g' => {
+                    if (!in_rgb or text[i - 1] != 'r') {
+                        return error.InvalidCharacter;
+                    }
+                },
+                'b' => {
+                    if (!in_rgb or text[i - 1] != 'g') {
+                        return error.InvalidCharacter;
+                    }
+                    done_rgb = true;
+                },
+                'a' => {
+                    if (!done_rgb) {
+                        return error.InvalidCharacter;
+                    }
+                    done_rgb = true;
+                    has_a = true;
+                },
+                ' ' => {},
+                '(' => {
+                    if (!done_rgb) {
+                        return error.InvalidCharacter;
+                    }
+                    in_r = true;
+                    if (!has_a) {
+                        a = 255;
+                    }
+                },
+                '0'...'9' => {
+                    if (in_r) {
+                        r = r * 10 + (byte - '0');
+                    } else if (in_g) {
+                        g = g * 10 + (byte - '0');
+                    } else if (in_b) {
+                        b = b * 10 + (byte - '0');
+                    } else if (in_a) {
+                        a = a * 10 + (byte - '0');
+                    } else {
+                        return error.InvalidCharacter;
+                    }
+                },
+                ',' => {
+                    if (in_r) {
+                        in_r = false;
+                        in_g = true;
+                    } else if (in_g) {
+                        in_g = false;
+                        in_b = true;
+                    } else if (in_b and has_a) {
+                        in_g = false;
+                        in_a = true;
+                    } else {
+                        return error.InvalidCharacter;
+                    }
+                },
+                ')' => {
+                    if (!in_b) {
+                        return error.InvalidCharacter;
+                    }
+                },
+                else => {
+                    return error.InvalidCharacter;
+                },
+            }
+        }
+        return CssRgbaColor{
+            .r = r,
+            .g = g,
+            .b = b,
+            .a = a,
+        };
+    }
 
     pub fn toRgbColor(this: CssColor) CssRgbColor {
         switch (this) {
@@ -526,7 +629,33 @@ test "CSS parser" {
 
 const SelectorToDeclarationMap = std.StringHashMap(ArrayList(*Declaration));
 
-pub const CssRule = struct {};
+pub const CssRule = struct {
+    // attribute CSSOMString cssText;
+    css_text: []const u8,
+
+    // readonly attribute CSSRule? parentRule
+    parent_rule: ?*CssRule = null,
+
+    // readonly attribute CSSStyleSheet? parentStyleSheet;
+
+    // readonly attribute unsigned short type;
+    type: u16,
+
+    pub const STYLE_RULE = 1;
+    pub const CHARSET_RULE = 2;
+    pub const IMPORT_RULE = 3;
+    pub const MEDIA_RULE = 4;
+    pub const FONT_FACE_RULE = 5;
+    pub const PAGE_RULE = 6;
+    pub const MARGIN_RULE = 9;
+    pub const NAMESPACE_RULE = 10;
+};
+
+pub const CssStyleRule = struct {
+    rule: CssRule,
+    selectorText: []const u8,
+    style: *CssStyleDeclaration,
+};
 
 pub const CssPriority = enum {
     Unimportant,
