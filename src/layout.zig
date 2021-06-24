@@ -19,6 +19,7 @@ const CssValueType = @import("css.zig").CssValueType;
 const CssValue = @import("css.zig").CssValue;
 const CssLengthType = @import("css.zig").CssLengthType;
 const CssLengthUnit = @import("css.zig").CssLengthUnit;
+const CssStyleDeclaration = @import("css.zig").CssStyleDeclaration;
 
 const Screen = @import("screen.zig").Screen;
 
@@ -107,221 +108,51 @@ pub const Layout = struct {
             try compositeCssRuleSet.addRuleSet(documentRuleSet);
         }
 
+        var style: ?*CssStyleDeclaration = null;
         if (node.nodeType == 1) {
             var element = @fieldParentPtr(Element, "node", node);
             var htmlElement = @fieldParentPtr(HtmlElement, "element", element);
-            try compositeCssRuleSet.addRuleSet(htmlElement.style);
+            style = try htmlElement.getUsedStyle();
         }
 
-        var declarations: ArrayList(CssDeclaration) = try ruleSet.getDeclarations(node, allocator);
-        for (declarations.items) |declaration| {
-            if (std.mem.eql(u8, "width", declaration.property)) {
-                switch (declaration.value) {
-                    CssValueType.length => |length| {
-                        switch (length.unit) {
-                            CssLengthUnit.px => {
-                                switch (length.value) {
-                                    CssNumber.int => |int_length| {
-                                        styleW = @intCast(u32, int_length);
-                                        if (std.mem.eql(u8, "IMG", node.nodeName) and styleH == null) {
-                                            newH = @floatToInt(u32, @intToFloat(f64, styleW.?) / @intToFloat(f64, newW.?) * @intToFloat(f64, newH.?));
-                                        }
-                                        newW = styleW;
-                                    },
-                                    CssNumber.float => |float_length| {},
-                                }
-                            },
-                            CssLengthUnit.percent => {
-                                var float_val: f64 = undefined;
-                                switch (length.value) {
-                                    CssNumber.int => |int_length| {
-                                        float_val = @intToFloat(f64, int_length);
-                                    },
-                                    CssNumber.float => |float_length| {
-                                        float_val = float_length;
-                                    },
-                                }
-                                newW = @floatToInt(u32, @round(float_val / 100.0 * @intToFloat(f64, w)));
-                            },
-                        }
-                    },
-                    else => {},
-                }
-            } else if (std.mem.eql(u8, "margin-top", declaration.property)) {
-                switch (declaration.value) {
-                    CssValueType.length => |length| {
-                        switch (length.unit) {
-                            CssLengthUnit.px => switch (length.value) {
-                                CssNumber.int => |int_length| {
-                                    marginTop = @intCast(i32, int_length);
-                                },
-                                CssNumber.float => |float_length| {},
-                            },
-                            else => {},
-                        }
-                    },
-                    else => {},
-                }
-            } else if (std.mem.eql(u8, "margin-left", declaration.property)) {
-                switch (declaration.value) {
-                    CssValueType.length => |length| {
-                        switch (length.unit) {
-                            CssLengthUnit.px => switch (length.value) {
-                                CssNumber.int => |int_length| {
-                                    marginLeft = @intCast(i32, int_length);
-                                },
-                                CssNumber.float => |float_length| {},
-                            },
-                            else => {},
-                        }
-                    },
-                    else => {},
-                }
-            } else if (std.mem.eql(u8, "margin-bottom", declaration.property)) {
-                switch (declaration.value) {
-                    CssValueType.length => |length| {
-                        switch (length.unit) {
-                            CssLengthUnit.px => switch (length.value) {
-                                CssNumber.int => |int_length| {
-                                    marginBottom = @intCast(i32, int_length);
-                                },
-                                CssNumber.float => |float_length| {},
-                            },
-                            else => {},
-                        }
-                    },
-                    else => {},
-                }
-            } else if (std.mem.eql(u8, "margin-right", declaration.property)) {
-                switch (declaration.value) {
-                    CssValueType.length => |length| {
-                        switch (length.unit) {
-                            CssLengthUnit.px => switch (length.value) {
-                                CssNumber.int => |int_length| {
-                                    marginRight = @intCast(i32, int_length);
-                                },
-                                CssNumber.float => |float_length| {},
-                            },
-                            else => {},
-                        }
-                    },
-                    else => {},
-                }
-            } else if (std.mem.eql(u8, "margin", declaration.property)) {
-                switch (declaration.value) {
-                    CssValueType.length => |length| {
-                        switch (length.unit) {
-                            CssLengthUnit.px => switch (length.value) {
-                                CssNumber.int => |int_length| {
-                                    var val = @intCast(i32, int_length);
-                                    marginTop = val;
-                                    marginBottom = val;
-                                    marginLeft = val;
-                                    marginRight = val;
-                                },
-                                CssNumber.float => |float_length| {},
-                            },
-                            else => {},
-                        }
-                    },
-                    else => {},
-                }
-            } else if (std.mem.eql(u8, "padding-top", declaration.property)) {
-                switch (declaration.value) {
-                    CssValueType.length => |length| {
-                        switch (length.unit) {
-                            CssLengthUnit.px => switch (length.value) {
-                                CssNumber.int => |int_length| {
-                                    paddingTop = @intCast(i32, int_length);
-                                },
-                                CssNumber.float => |float_length| {},
-                            },
-                            else => {},
-                        }
-                    },
-                    else => {},
-                }
-            } else if (std.mem.eql(u8, "padding-left", declaration.property)) {
-                switch (declaration.value) {
-                    CssValueType.length => |length| {
-                        switch (length.unit) {
-                            CssLengthUnit.px => switch (length.value) {
-                                CssNumber.int => |int_length| {
-                                    paddingLeft = @intCast(i32, int_length);
-                                },
-                                CssNumber.float => |float_length| {},
-                            },
-                            else => {},
-                        }
-                    },
-                    else => {},
-                }
-            } else if (std.mem.eql(u8, "padding-bottom", declaration.property)) {
-                switch (declaration.value) {
-                    CssValueType.length => |length| {
-                        switch (length.unit) {
-                            CssLengthUnit.px => switch (length.value) {
-                                CssNumber.int => |int_length| {
-                                    paddingBottom = @intCast(i32, int_length);
-                                },
-                                CssNumber.float => |float_length| {},
-                            },
-                            else => {},
-                        }
-                    },
-                    else => {},
-                }
-            } else if (std.mem.eql(u8, "padding-right", declaration.property)) {
-                switch (declaration.value) {
-                    CssValueType.length => |length| {
-                        switch (length.unit) {
-                            CssLengthUnit.px => switch (length.value) {
-                                CssNumber.int => |int_length| {
-                                    paddingRight = @intCast(i32, int_length);
-                                },
-                                CssNumber.float => |float_length| {},
-                            },
-                            else => {},
-                        }
-                    },
-                    else => {},
-                }
-            } else if (std.mem.eql(u8, "padding", declaration.property)) {
-                switch (declaration.value) {
-                    CssValueType.length => |length| {
-                        switch (length.unit) {
-                            CssLengthUnit.px => switch (length.value) {
-                                CssNumber.int => |int_length| {
-                                    var val = @intCast(i32, int_length);
-                                    paddingTop = val;
-                                    paddingBottom = val;
-                                    paddingLeft = val;
-                                    paddingRight = val;
-                                },
-                                CssNumber.float => |float_length| {},
-                            },
-                            else => {},
-                        }
-                    },
-                    else => {},
-                }
-            } else if (std.mem.eql(u8, "background-color", declaration.property)) {
-                switch (declaration.value) {
-                    CssValueType.color => |color| {
-                        backgroundColor = color.toRgbColor();
-                    },
-                    else => {},
-                }
-            } else if (std.mem.eql(u8, "color", declaration.property)) {
-                switch (declaration.value) {
-                    CssValueType.color => |color| {
-                        textColor = color.toRgbColor();
-                    },
-                    else => {},
-                }
+        if (style != null) {
+            // Get width, margin, padding, background-color, and color...
+            var width_str = style.?.getPropertyValue("width");
+            styleW = try std.fmt.parseInt(u32, width_str[0 .. width_str.len - 2], 10);
+            if (std.mem.eql(u8, "IMG", node.nodeName) and styleH == null) {
+                newH = @floatToInt(u32, @intToFloat(f64, styleW.?) / @intToFloat(f64, newW.?) * @intToFloat(f64, newH.?));
             }
+            newW = styleW;
+
+            var margin_top_str = style.?.getPropertyValue("margin-top");
+            marginTop = std.fmt.parseInt(i32, margin_top_str[0 .. margin_top_str.len - 2], 10) catch 0;
+
+            var margin_bottom_str = style.?.getPropertyValue("margin-bottom");
+            marginBottom = std.fmt.parseInt(i32, margin_bottom_str[0 .. margin_bottom_str.len - 2], 10) catch 0;
+
+            var margin_left_str = style.?.getPropertyValue("margin-left");
+            marginLeft = std.fmt.parseInt(i32, margin_left_str[0 .. margin_left_str.len - 2], 10) catch 0;
+
+            var margin_right_str = style.?.getPropertyValue("margin-right");
+            marginRight = std.fmt.parseInt(i32, margin_right_str[0 .. margin_right_str.len - 2], 10) catch 0;
+
+            var padding_top_str = style.?.getPropertyValue("padding-top");
+            paddingTop = std.fmt.parseInt(i32, padding_top_str[0 .. padding_top_str.len - 2], 10) catch 0;
+
+            var padding_bottom_str = style.?.getPropertyValue("padding-bottom");
+            paddingBottom = std.fmt.parseInt(i32, padding_bottom_str[0 .. padding_bottom_str.len - 2], 10) catch 0;
+
+            var padding_left_str = style.?.getPropertyValue("padding-left");
+            paddingLeft = std.fmt.parseInt(i32, padding_left_str[0 .. padding_left_str.len - 2], 10) catch 0;
+
+            var padding_right_str = style.?.getPropertyValue("padding-right");
+            paddingRight = std.fmt.parseInt(i32, padding_right_str[0 .. padding_right_str.len - 2], 10) catch 0;
+
+            var color_str = style.?.getPropertyValue("color");
+            var background_color_str = style.?.getPropertyValue("background-color");
+            // TODO: Parse color and background-color with the assumption that it is either rgb(n,n,n) or rgba(n,n,n,n)
+            std.debug.print("TODO: parse color {s} and background-color {s}\n", .{ color_str, background_color_str });
         }
-        declarations.deinit();
 
         if (std.mem.eql(u8, "#text", node.nodeName)) {
             var firstNonSpace: ?usize = null;

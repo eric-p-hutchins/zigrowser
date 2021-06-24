@@ -132,6 +132,7 @@ pub fn deinit(self: *Document, allocator: *Allocator) void {
     for (self.styleElementRuleSets.items) |ruleSet| {
         ruleSet.deinit();
     }
+    self.styleElementRuleSets.deinit();
     if (self.doctypeElement != null) {
         self.doctypeElement.?.deinit();
     }

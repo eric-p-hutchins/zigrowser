@@ -1,7 +1,9 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
+const StringHashMap = std.StringHashMap;
 const testing = std.testing;
+const expect = testing.expect;
 const expectEqual = testing.expectEqual;
 
 const Node = @import("node.zig");
@@ -97,6 +99,117 @@ pub const CssValue = union(CssValueType) {
     length: CssLengthType,
     color: CssColor,
     textAlign: CssTextAlign,
+};
+
+// TODO: Eventually, do a real CSS cascade (list of declared values from different origins sorted by
+// precedence) instead of just copying the CssStyleDeclaration
+pub const CssCascade = struct {
+    allocator: *Allocator,
+
+    // [CEReactions] attribute CSSOMString cssText
+    css_text: []const u8,
+
+    // readonly attribute unsigned long length
+    // Use properties_by_index.items.len
+
+    property_values: StringHashMap([]u8),
+    property_names: ArrayList([]u8),
+    property_priority: StringHashMap(CssPriority),
+
+    // readonly attribute CSSRule? parentRule
+    parent_rule: ?*CssRule = null,
+
+    // [CEReactions] attribute [LegacyNullToEmptyString] CSSOMString cssFloat
+    // It's just getting and setting the "float" property...
+
+    pub fn init(allocator: *Allocator) CssCascade {
+        return CssCascade{
+            .allocator = allocator,
+            .css_text = "",
+            .property_values = StringHashMap([]u8).init(allocator),
+            .property_names = ArrayList([]u8).init(allocator),
+            .property_priority = StringHashMap(CssPriority).init(allocator),
+        };
+    }
+
+    pub fn deinit(self: *CssCascade) void {
+        var iterator = self.property_values.iterator();
+        var entry = iterator.next();
+        while (entry != null) : (entry = iterator.next()) {
+            self.allocator.free(entry.?.key_ptr.*);
+            self.allocator.free(entry.?.value_ptr.*);
+        }
+        self.property_values.deinit();
+        self.property_priority.deinit();
+        self.property_names.deinit();
+    }
+
+    // getter CSSOMString item(unsigned long index)
+    pub fn item(self: *CssCascade, index: u32) []const u8 {
+        return if (index < self.property_names.items.len) self.property_names.items[index] else "";
+    }
+
+    // CSSOMString getPropertyValue(CSSOMString property)
+    pub fn getPropertyValue(self: *CssCascade, property: []const u8) []const u8 {
+        return self.property_values.get(property) orelse "";
+    }
+
+    // CSSOMString getPropertyPriority(CSSOMString property)
+    pub fn getPropertyPriority(self: *CssCascade, property: []const u8) CssPriority {
+        return self.property_priority.get(property) orelse .Unimportant;
+    }
+
+    // [CEReactions] undefined setProperty(CSSOMString property, [LegacyNullToEmptyString] CSSOMString value, optional [LegacyNullToEmptyString] CSSOMString priority = "")
+    pub fn setProperty(self: *CssCascade, property: []const u8, value: []const u8, priority: CssPriority) !void {
+        var map_value: ?[]u8 = self.property_values.get(property);
+        if (map_value != null) {
+            self.allocator.free(map_value.?);
+            try self.property_values.put(property, undefined);
+        } else {
+            var key = try self.allocator.dupe(u8, property);
+            errdefer self.allocator.free(key);
+
+            try self.property_names.append(key);
+            errdefer _ = self.property_names.pop();
+
+            try self.property_values.put(key, undefined);
+            errdefer _ = self.property_values.remove(key);
+
+            try self.property_priority.put(key, undefined);
+            errdefer _ = self.property_priority.remove(key);
+        }
+
+        var value_entry = self.property_values.getEntry(property);
+        if (value_entry != null) {
+            value_entry.?.value_ptr.* = try std.mem.dupe(self.allocator, u8, value);
+        }
+
+        var priority_entry = self.property_priority.getEntry(property);
+        if (priority_entry != null) {
+            priority_entry.?.value_ptr.* = priority;
+        }
+    }
+
+    // [CEReactions] CSSOMString removeProperty(CSSOMString property)
+    pub fn removeProperty(self: *CssCascade, property: []const u8) void {
+        var value_entry = self.property_values.getEntry(property);
+        if (value_entry == null) return;
+
+        var index: usize = undefined;
+        var key_ptr = value_entry.?.key_ptr;
+        var value_ptr = value_entry.?.value_ptr;
+        for (self.property_names.items) |name, i| {
+            if (std.mem.eql(u8, property, name)) {
+                index = i;
+            }
+        }
+
+        var property_name = self.property_names.orderedRemove(index);
+        self.allocator.free(value_ptr.*);
+        _ = self.property_values.remove(property);
+        _ = self.property_priority.remove(property);
+        self.allocator.free(property_name);
+    }
 };
 
 pub const Declaration = struct {
@@ -345,15 +458,223 @@ pub const CssParser = struct {
 
         return &genericRuleSet.ruleSet;
     }
+
+    fn setProperty(style: *CssStyleDeclaration, property: []const u8, value: []const u8, priority: CssPriority) !void {
+        try style.setProperty(property, value, priority);
+        if (std.mem.eql(u8, "margin", property)) {
+            try style.setProperty("margin-top", value, priority);
+            try style.setProperty("margin-bottom", value, priority);
+            try style.setProperty("margin-left", value, priority);
+            try style.setProperty("margin-right", value, priority);
+        }
+    }
+
+    pub fn parseStyleDeclaration(allocator: *Allocator, text: []const u8) !*CssStyleDeclaration {
+        var style: *CssStyleDeclaration = try allocator.create(CssStyleDeclaration);
+        style.* = CssStyleDeclaration.init(allocator);
+
+        var inProperty: bool = true;
+        var inValue: bool = false;
+
+        var property = ArrayList(u8).init(allocator);
+        var value = ArrayList(u8).init(allocator);
+
+        for (text) |byte, i| {
+            if (inProperty) {
+                if (byte == ':') {
+                    inProperty = false;
+                    inValue = true;
+                } else if (byte != ' ' and byte != '\n') {
+                    try property.append(byte);
+                }
+            } else {
+                if (byte == ';') {
+                    inValue = false;
+
+                    try CssParser.setProperty(style, property.items, value.items, .Unimportant);
+
+                    property.clearRetainingCapacity();
+                    value.clearRetainingCapacity();
+                    inProperty = true;
+                } else if (byte != ' ' and byte != '\n') {
+                    try value.append(byte);
+                }
+            }
+        }
+
+        if (inValue) {
+            inValue = false;
+
+            try CssParser.setProperty(style, property.items, value.items, .Unimportant);
+
+            property.clearRetainingCapacity();
+            value.clearRetainingCapacity();
+            inProperty = true;
+        }
+
+        property.deinit();
+        value.deinit();
+
+        return style;
+    }
 };
 
 test "CSS parser" {
-    var ruleSet = try CssParser.parse(std.testing.allocator, "body{background-color: #131315;color:white}");
+    var ruleSet = try CssParser.parse(std.testing.allocator, "body{background-color: #131315;color:white}", false);
     defer ruleSet.deinit();
 }
 
 const SelectorToDeclarationMap = std.StringHashMap(ArrayList(*Declaration));
 
+pub const CssRule = struct {};
+
+pub const CssPriority = enum {
+    Unimportant,
+    Important,
+};
+
+pub const CssStyleDeclaration = struct {
+    allocator: *Allocator,
+
+    // [CEReactions] attribute CSSOMString cssText
+    css_text: []const u8,
+
+    // readonly attribute unsigned long length
+    // Use properties_by_index.items.len
+
+    property_values: StringHashMap([]u8),
+    property_names: ArrayList([]u8),
+    property_priority: StringHashMap(CssPriority),
+
+    // readonly attribute CSSRule? parentRule
+    parent_rule: ?*CssRule = null,
+
+    // [CEReactions] attribute [LegacyNullToEmptyString] CSSOMString cssFloat
+    // It's just getting and setting the "float" property...
+
+    pub fn init(allocator: *Allocator) CssStyleDeclaration {
+        return CssStyleDeclaration{
+            .allocator = allocator,
+            .css_text = "",
+            .property_values = StringHashMap([]u8).init(allocator),
+            .property_names = ArrayList([]u8).init(allocator),
+            .property_priority = StringHashMap(CssPriority).init(allocator),
+        };
+    }
+
+    pub fn deinit(self: *CssStyleDeclaration) void {
+        var iterator = self.property_values.iterator();
+        var entry = iterator.next();
+        while (entry != null) : (entry = iterator.next()) {
+            self.allocator.free(entry.?.key_ptr.*);
+            self.allocator.free(entry.?.value_ptr.*);
+        }
+        self.property_values.deinit();
+        self.property_priority.deinit();
+        self.property_names.deinit();
+    }
+
+    // getter CSSOMString item(unsigned long index)
+    pub fn item(self: *CssStyleDeclaration, index: u32) []const u8 {
+        return if (index < self.property_names.items.len) self.property_names.items[index] else "";
+    }
+
+    // CSSOMString getPropertyValue(CSSOMString property)
+    pub fn getPropertyValue(self: *CssStyleDeclaration, property: []const u8) []const u8 {
+        return self.property_values.get(property) orelse "";
+    }
+
+    // CSSOMString getPropertyPriority(CSSOMString property)
+    pub fn getPropertyPriority(self: *CssStyleDeclaration, property: []const u8) CssPriority {
+        return self.property_priority.get(property) orelse .Unimportant;
+    }
+
+    // [CEReactions] undefined setProperty(CSSOMString property, [LegacyNullToEmptyString] CSSOMString value, optional [LegacyNullToEmptyString] CSSOMString priority = "")
+    pub fn setProperty(self: *CssStyleDeclaration, property: []const u8, value: []const u8, priority: CssPriority) !void {
+        var map_value: ?[]u8 = self.property_values.get(property);
+        if (map_value != null) {
+            self.allocator.free(map_value.?);
+            try self.property_values.put(property, undefined);
+        } else {
+            var key = try self.allocator.dupe(u8, property);
+            errdefer self.allocator.free(key);
+
+            try self.property_names.append(key);
+            errdefer _ = self.property_names.pop();
+
+            try self.property_values.put(key, undefined);
+            errdefer _ = self.property_values.remove(key);
+
+            try self.property_priority.put(key, undefined);
+            errdefer _ = self.property_priority.remove(key);
+        }
+
+        var value_entry = self.property_values.getEntry(property);
+        if (value_entry != null) {
+            value_entry.?.value_ptr.* = try std.mem.dupe(self.allocator, u8, value);
+        }
+
+        var priority_entry = self.property_priority.getEntry(property);
+        if (priority_entry != null) {
+            priority_entry.?.value_ptr.* = priority;
+        }
+    }
+
+    // [CEReactions] CSSOMString removeProperty(CSSOMString property)
+    pub fn removeProperty(self: *CssStyleDeclaration, property: []const u8) void {
+        var value_entry = self.property_values.getEntry(property);
+        if (value_entry == null) return;
+
+        var index: usize = undefined;
+        var key_ptr = value_entry.?.key_ptr;
+        var value_ptr = value_entry.?.value_ptr;
+        for (self.property_names.items) |name, i| {
+            if (std.mem.eql(u8, property, name)) {
+                index = i;
+            }
+        }
+
+        var property_name = self.property_names.orderedRemove(index);
+        self.allocator.free(value_ptr.*);
+        _ = self.property_values.remove(property);
+        _ = self.property_priority.remove(property);
+        self.allocator.free(property_name);
+    }
+};
+
+test "CssStyleDeclaration" {
+    var style: CssStyleDeclaration = CssStyleDeclaration.init(std.testing.allocator);
+    defer style.deinit();
+
+    try style.setProperty("background-color", "green", .Unimportant);
+
+    try expect(std.mem.eql(u8, "green", style.getPropertyValue("background-color")));
+    try expectEqual(CssPriority.Unimportant, style.getPropertyPriority("background-color"));
+
+    try style.setProperty("background-color", "gray", .Important);
+
+    try expect(std.mem.eql(u8, "gray", style.getPropertyValue("background-color")));
+    try expectEqual(CssPriority.Important, style.getPropertyPriority("background-color"));
+
+    try expectEqual(@intCast(usize, 1), style.property_names.items.len);
+    try expect(std.mem.eql(u8, "background-color", style.item(0)));
+
+    try style.setProperty("color", "black", .Unimportant);
+
+    try expectEqual(@intCast(usize, 2), style.property_names.items.len);
+    try expect(std.mem.eql(u8, "background-color", style.item(0)));
+    try expect(std.mem.eql(u8, "color", style.item(1)));
+
+    style.removeProperty("background-color");
+
+    try expectEqual(@intCast(usize, 1), style.property_names.items.len);
+    try expect(std.mem.eql(u8, "color", style.item(0)));
+
+    try expect(std.mem.eql(u8, "", style.getPropertyValue("background-color")));
+    try expect(std.mem.eql(u8, "", style.getPropertyValue("non-existent")));
+}
+
+/// Deprecated. Need to implement the real cssom interfaces and then prefer those.
 pub const RuleSet = struct {
     const This = @This();
 
