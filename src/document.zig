@@ -16,6 +16,8 @@ const CssRGBAColor = @import("css.zig").CssRGBAColor;
 const CssLengthType = @import("css.zig").CssLengthType;
 const CssLengthUnit = @import("css.zig").CssLengthUnit;
 const CssParser = @import("css.zig").CssParser;
+const CssStyleSheet = @import("css.zig").CssStyleSheet;
+const StyleSheetList = @import("css.zig").StyleSheetList;
 
 const UserAgentCssRuleSet = @import("css.zig").UserAgentCssRuleSet;
 const GenericCssRuleSet = @import("css.zig").GenericCssRuleSet;
@@ -39,6 +41,7 @@ body: *HtmlElement,
 userAgentRuleSet: *UserAgentCssRuleSet,
 styleElementRuleSets: ArrayList(*CssRuleSet),
 cssRuleSet: *CssRuleSet,
+style_sheet_list: *StyleSheetList,
 
 fn findStyleElements(allocator: *Allocator, node: *Node) anyerror!*ArrayList(*const Node) {
     var nodes: *ArrayList(*const Node) = try allocator.create(ArrayList(*const Node));
@@ -67,6 +70,8 @@ pub fn init(allocator: *Allocator, string: []const u8) !*Document {
     var documentElement: ?*HtmlElement = null;
     var head: ?*HtmlElement = null;
     var body: ?*HtmlElement = null;
+    var style_sheet_list: *StyleSheetList = try allocator.create(StyleSheetList);
+    style_sheet_list.* = StyleSheetList.init(allocator);
     documentElement = try HtmlElement.parse(allocator, string);
     if (documentElement != null and documentElement.?.element.node.nodeType == 10) {
         doctypeElement = documentElement;
@@ -98,6 +103,11 @@ pub fn init(allocator: *Allocator, string: []const u8) !*Document {
     for (styleElements.items) |styleNode| {
         var element = @fieldParentPtr(Element, "node", styleNode);
         var elementRuleSet = try CssParser.parse(allocator, element.innerHTML, false);
+
+        const style_sheet = try CssStyleSheet.init(allocator, element.innerHTML);
+        errdefer style_sheet.deinit();
+
+        try style_sheet_list.append(style_sheet);
         try styleElementRuleSets.append(elementRuleSet);
         try ruleSet.addRuleSet(elementRuleSet);
     }
@@ -105,11 +115,20 @@ pub fn init(allocator: *Allocator, string: []const u8) !*Document {
     styleElements.deinit();
     allocator.destroy(styleElements);
 
+    var childNodes = ArrayList(*Node).init(allocator);
+    if (doctypeElement != null) {
+        try childNodes.append(&doctypeElement.?.element.node);
+    }
+    if (documentElement != null) {
+        try childNodes.append(&documentElement.?.element.node);
+    }
+
     const document: *Document = try allocator.create(Document);
     document.* = Document{
         .userAgentRuleSet = userAgentRuleSet,
         .styleElementRuleSets = styleElementRuleSets,
         .cssRuleSet = &ruleSet.ruleSet,
+        .style_sheet_list = style_sheet_list,
         .doctypeElement = doctypeElement,
         .htmlElement = documentElement.?,
         .node = Node{
@@ -117,13 +136,15 @@ pub fn init(allocator: *Allocator, string: []const u8) !*Document {
             .isConnected = true,
             .nodeName = "#document",
             .nodeType = 9,
-            .childNodes = ArrayList(*Node).init(allocator),
-            .ownerDocument = document,
+            .childNodes = childNodes,
+            .ownerDocument = null,
         },
         .head = head.?,
         .body = body.?,
     };
-    try document.htmlElement.element.node.setOwnerDocument(document);
+    for (childNodes.items) |node| {
+        try node.setOwnerDocument(document);
+    }
     return document;
 }
 
@@ -138,6 +159,10 @@ pub fn deinit(self: *Document, allocator: *Allocator) void {
     }
     self.htmlElement.deinit();
     self.cssRuleSet.deinit();
+    for (self.style_sheet_list.items) |style_sheet| {
+        style_sheet.deinit();
+    }
+    self.style_sheet_list.deinit();
     allocator.destroy(self);
 }
 

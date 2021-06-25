@@ -7,6 +7,7 @@ const expect = testing.expect;
 const expectEqual = testing.expectEqual;
 
 const Node = @import("node.zig");
+const HtmlElement = @import("html.zig").HtmlElement;
 
 pub const CssValueType = enum {
     length,
@@ -204,10 +205,41 @@ pub const CssValue = union(CssValueType) {
     textAlign: CssTextAlign,
 };
 
+pub const CssStyleSheet = struct {
+    allocator: *Allocator,
+    href: ?[]const u8 = null,
+    owner_node: ?*Node = null,
+    parent: ?*CssStyleSheet = null,
+    title: ?[]const u8 = null,
+    media: ArrayList([]u8),
+    owner_rule: ?*CssRule = null,
+    css_rules: ArrayList(*CssRule),
+
+    pub fn init(allocator: *Allocator, text: []const u8) !*CssStyleSheet {
+        var style_sheet: *CssStyleSheet = try allocator.create(CssStyleSheet);
+        style_sheet.* = CssStyleSheet{
+            .allocator = allocator,
+            .media = ArrayList([]u8).init(allocator),
+            .css_rules = ArrayList(*CssRule).init(allocator),
+        };
+        return style_sheet;
+    }
+
+    pub fn deinit(style_sheet: *CssStyleSheet) void {
+        style_sheet.media.deinit();
+        style_sheet.css_rules.deinit();
+        style_sheet.allocator.destroy(style_sheet);
+    }
+};
+
+pub const StyleSheetList = ArrayList(*CssStyleSheet);
+
 // TODO: Eventually, do a real CSS cascade (list of declared values from different origins sorted by
 // precedence) instead of just copying the CssStyleDeclaration
 pub const CssCascade = struct {
     allocator: *Allocator,
+
+    html_element: *HtmlElement,
 
     // [CEReactions] attribute CSSOMString cssText
     css_text: []const u8,
@@ -219,15 +251,10 @@ pub const CssCascade = struct {
     property_names: ArrayList([]u8),
     property_priority: StringHashMap(CssPriority),
 
-    // readonly attribute CSSRule? parentRule
-    parent_rule: ?*CssRule = null,
-
-    // [CEReactions] attribute [LegacyNullToEmptyString] CSSOMString cssFloat
-    // It's just getting and setting the "float" property...
-
-    pub fn init(allocator: *Allocator) CssCascade {
+    pub fn init(allocator: *Allocator, html_element: *HtmlElement) CssCascade {
         return CssCascade{
             .allocator = allocator,
+            .html_element = html_element,
             .css_text = "",
             .property_values = StringHashMap([]u8).init(allocator),
             .property_names = ArrayList([]u8).init(allocator),
@@ -245,6 +272,11 @@ pub const CssCascade = struct {
         self.property_values.deinit();
         self.property_priority.deinit();
         self.property_names.deinit();
+    }
+
+    pub fn cascade(self: *CssCascade) void {
+        const owner_document = self.html_element.element.node.ownerDocument.?;
+        std.debug.print("# of stylesheets in owner of {s}: {d}\n", .{ self.html_element.element.node.nodeName, owner_document.style_sheet_list.items.len });
     }
 
     // getter CSSOMString item(unsigned long index)
@@ -293,26 +325,26 @@ pub const CssCascade = struct {
         }
     }
 
-    // [CEReactions] CSSOMString removeProperty(CSSOMString property)
-    pub fn removeProperty(self: *CssCascade, property: []const u8) void {
-        var value_entry = self.property_values.getEntry(property);
-        if (value_entry == null) return;
+    // // [CEReactions] CSSOMString removeProperty(CSSOMString property)
+    // pub fn removeProperty(self: *CssCascade, property: []const u8) void {
+    //     var value_entry = self.property_values.getEntry(property);
+    //     if (value_entry == null) return;
 
-        var index: usize = undefined;
-        var key_ptr = value_entry.?.key_ptr;
-        var value_ptr = value_entry.?.value_ptr;
-        for (self.property_names.items) |name, i| {
-            if (std.mem.eql(u8, property, name)) {
-                index = i;
-            }
-        }
+    //     var index: usize = undefined;
+    //     var key_ptr = value_entry.?.key_ptr;
+    //     var value_ptr = value_entry.?.value_ptr;
+    //     for (self.property_names.items) |name, i| {
+    //         if (std.mem.eql(u8, property, name)) {
+    //             index = i;
+    //         }
+    //     }
 
-        var property_name = self.property_names.orderedRemove(index);
-        self.allocator.free(value_ptr.*);
-        _ = self.property_values.remove(property);
-        _ = self.property_priority.remove(property);
-        self.allocator.free(property_name);
-    }
+    //     var property_name = self.property_names.orderedRemove(index);
+    //     self.allocator.free(value_ptr.*);
+    //     _ = self.property_values.remove(property);
+    //     _ = self.property_priority.remove(property);
+    //     self.allocator.free(property_name);
+    // }
 };
 
 pub const Declaration = struct {
@@ -656,6 +688,8 @@ pub const CssStyleRule = struct {
     selectorText: []const u8,
     style: *CssStyleDeclaration,
 };
+
+pub const CssRuleList = ArrayList(*CssRule);
 
 pub const CssPriority = enum {
     Unimportant,

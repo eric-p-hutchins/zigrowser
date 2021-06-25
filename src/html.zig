@@ -107,24 +107,27 @@ pub const HtmlElement = struct {
         const declaredStyle = self.declaredStyle;
 
         self.cascade = try self.allocator.create(CssCascade);
-        self.cascade.?.* = CssCascade.init(self.allocator);
+        const cascade = self.cascade.?;
+        cascade.* = CssCascade.init(self.allocator, self);
+
+        cascade.cascade();
 
         // TODO: Eventually, do a real CSS cascade instead of hacking in the declared properties
         std.debug.print("TODO: Do a real cascade to bring in the properties from the style block...\n", .{});
-        try self.cascade.?.setProperty("width", declaredStyle.getPropertyValue("width"), declaredStyle.getPropertyPriority("width"));
-        try self.cascade.?.setProperty("height", declaredStyle.getPropertyValue("height"), declaredStyle.getPropertyPriority("height"));
-        try self.cascade.?.setProperty("margin-top", declaredStyle.getPropertyValue("margin-top"), declaredStyle.getPropertyPriority("margin-top"));
-        try self.cascade.?.setProperty("margin-bottom", declaredStyle.getPropertyValue("margin-bottom"), declaredStyle.getPropertyPriority("margin-bottom"));
-        try self.cascade.?.setProperty("margin-left", declaredStyle.getPropertyValue("margin-left"), declaredStyle.getPropertyPriority("margin-left"));
-        try self.cascade.?.setProperty("margin-right", declaredStyle.getPropertyValue("margin-right"), declaredStyle.getPropertyPriority("margin-right"));
-        try self.cascade.?.setProperty("padding-top", declaredStyle.getPropertyValue("padding-top"), declaredStyle.getPropertyPriority("padding-top"));
-        try self.cascade.?.setProperty("padding-bottom", declaredStyle.getPropertyValue("padding-bottom"), declaredStyle.getPropertyPriority("padding-bottom"));
-        try self.cascade.?.setProperty("padding-left", declaredStyle.getPropertyValue("padding-left"), declaredStyle.getPropertyPriority("padding-left"));
-        try self.cascade.?.setProperty("padding-right", declaredStyle.getPropertyValue("padding-right"), declaredStyle.getPropertyPriority("padding-right"));
-        try self.cascade.?.setProperty("color", declaredStyle.getPropertyValue("color"), declaredStyle.getPropertyPriority("color"));
-        try self.cascade.?.setProperty("background-color", declaredStyle.getPropertyValue("background-color"), declaredStyle.getPropertyPriority("background-color"));
+        try cascade.setProperty("width", declaredStyle.getPropertyValue("width"), declaredStyle.getPropertyPriority("width"));
+        try cascade.setProperty("height", declaredStyle.getPropertyValue("height"), declaredStyle.getPropertyPriority("height"));
+        try cascade.setProperty("margin-top", declaredStyle.getPropertyValue("margin-top"), declaredStyle.getPropertyPriority("margin-top"));
+        try cascade.setProperty("margin-bottom", declaredStyle.getPropertyValue("margin-bottom"), declaredStyle.getPropertyPriority("margin-bottom"));
+        try cascade.setProperty("margin-left", declaredStyle.getPropertyValue("margin-left"), declaredStyle.getPropertyPriority("margin-left"));
+        try cascade.setProperty("margin-right", declaredStyle.getPropertyValue("margin-right"), declaredStyle.getPropertyPriority("margin-right"));
+        try cascade.setProperty("padding-top", declaredStyle.getPropertyValue("padding-top"), declaredStyle.getPropertyPriority("padding-top"));
+        try cascade.setProperty("padding-bottom", declaredStyle.getPropertyValue("padding-bottom"), declaredStyle.getPropertyPriority("padding-bottom"));
+        try cascade.setProperty("padding-left", declaredStyle.getPropertyValue("padding-left"), declaredStyle.getPropertyPriority("padding-left"));
+        try cascade.setProperty("padding-right", declaredStyle.getPropertyValue("padding-right"), declaredStyle.getPropertyPriority("padding-right"));
+        try cascade.setProperty("color", declaredStyle.getPropertyValue("color"), declaredStyle.getPropertyPriority("color"));
+        try cascade.setProperty("background-color", declaredStyle.getPropertyValue("background-color"), declaredStyle.getPropertyPriority("background-color"));
 
-        return self.cascade.?;
+        return cascade;
     }
 
     pub fn getSpecifiedStyle(self: *HtmlElement) !*CssStyleDeclaration {
