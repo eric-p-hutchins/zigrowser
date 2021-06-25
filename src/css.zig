@@ -326,27 +326,6 @@ pub const CssCascade = struct {
             priority_entry.?.value_ptr.* = priority;
         }
     }
-
-    // // [CEReactions] CSSOMString removeProperty(CSSOMString property)
-    // pub fn removeProperty(self: *CssCascade, property: []const u8) void {
-    //     var value_entry = self.property_values.getEntry(property);
-    //     if (value_entry == null) return;
-
-    //     var index: usize = undefined;
-    //     var key_ptr = value_entry.?.key_ptr;
-    //     var value_ptr = value_entry.?.value_ptr;
-    //     for (self.property_names.items) |name, i| {
-    //         if (std.mem.eql(u8, property, name)) {
-    //             index = i;
-    //         }
-    //     }
-
-    //     var property_name = self.property_names.orderedRemove(index);
-    //     self.allocator.free(value_ptr.*);
-    //     _ = self.property_values.remove(property);
-    //     _ = self.property_priority.remove(property);
-    //     self.allocator.free(property_name);
-    // }
 };
 
 pub const Declaration = struct {
@@ -370,27 +349,177 @@ pub const Declaration = struct {
 
 pub const CssTokenizer = struct {
     text: []const u8,
+    pos: usize,
+    state: State,
+    start: usize,
 
     pub fn init(text: []const u8) CssTokenizer {
         return CssTokenizer{
             .text = text,
+            .pos = 0,
+            .state = .None,
+            .start = 0,
         };
     }
 
-    pub fn next(self: *CssTokenizer) !?CssToken {
-        return null;
+    pub fn next(self: *CssTokenizer) CssToken {
+        while (self.pos < self.text.len) {
+            switch (self.state) {
+                .None => {
+                    switch (self.text[self.pos]) {
+                        '{' => {
+                            self.pos += 1;
+                            self.state = .None;
+                            return .LeftCurlyBracket;
+                        },
+                        '@' => {
+                            switch (self.text[self.pos + 1]) {
+                                '-' => {
+                                    if (self.pos + 2 >= self.text.len) {
+                                        self.pos += 1;
+                                        self.state = .None;
+                                        return .{
+                                            .Delim = .{
+                                                .start = self.pos,
+                                                .end = self.pos + 1,
+                                            },
+                                        };
+                                    }
+                                    switch (self.text[self.pos + 2]) {
+                                        'A'...'Z', 'a'...'z', '_' => {
+                                            self.state = .AtKeyword;
+                                            self.start = self.pos;
+                                            self.pos += 1;
+                                        },
+                                        else => {
+                                            if (self.text[self.pos + 1] > 0x80) {
+                                                self.state = .AtKeyword;
+                                                self.start = self.pos;
+                                                self.pos += 1;
+                                            }
+                                            self.state = .None;
+                                            return .{
+                                                .Delim = .{
+                                                    .start = self.pos,
+                                                    .end = self.pos + 1,
+                                                },
+                                            };
+                                        },
+                                    }
+                                },
+                                'A'...'Z', 'a'...'z', '_' => {
+                                    self.state = .AtKeyword;
+                                    self.start = self.pos;
+                                    self.pos += 1;
+                                },
+                                else => {
+                                    if (self.text[self.pos + 1] > 0x80) {
+                                        self.state = .AtKeyword;
+                                        self.start = self.pos;
+                                        self.pos += 1;
+                                        continue;
+                                    }
+                                    self.state = .None;
+                                    return .{
+                                        .Delim = .{
+                                            .start = self.pos,
+                                            .end = self.pos + 1,
+                                        },
+                                    };
+                                },
+                            }
+                        },
+                        else => {
+                            self.pos += 1;
+                        },
+                    }
+                },
+                .AtKeyword => {
+                    switch (self.text[self.pos]) {
+                        'A'...'Z' => {
+                            self.pos += 1;
+                        },
+                        'a'...'z' => {
+                            self.pos += 1;
+                        },
+                        '0'...'9' => {
+                            self.pos += 1;
+                        },
+                        '_' => {
+                            self.pos += 1;
+                        },
+                        '-' => {
+                            self.pos += 1;
+                        },
+                        else => {
+                            if (self.text[self.pos] > 0x80) {
+                                self.pos += 1;
+                            }
+                            if (self.text[self.pos] == '\\') {
+                                if (self.pos + 1 < self.text.len) {
+                                    if (self.text[self.pos + 1] == '\n') {
+                                        const end = self.pos;
+                                        self.pos += 1;
+                                        self.state = .None;
+                                        return .{
+                                            .AtKeyword = .{
+                                                .start = self.start,
+                                                .end = end,
+                                            },
+                                        };
+                                    } else {
+                                        self.pos += 2;
+                                    }
+                                }
+                                const end = self.pos;
+                                self.pos += 1;
+                                self.state = .None;
+                                return .{
+                                    .AtKeyword = .{
+                                        .start = self.start,
+                                        .end = end,
+                                    },
+                                };
+                            }
+                            const end = self.pos;
+                            self.pos += 1;
+                            self.state = .None;
+                            return .{
+                                .AtKeyword = .{
+                                    .start = self.start,
+                                    .end = end,
+                                },
+                            };
+                        },
+                    }
+                },
+            }
+        }
+        return .Eof;
     }
 
+    pub const State = enum {
+        None,
+        AtKeyword,
+    };
+
     pub const CssToken = union(enum) {
+        Eof,
         Ident,
         Function,
-        At,
+        AtKeyword: struct {
+            start: usize,
+            end: usize,
+        },
         Hash,
         String,
         BadString,
         Url,
         BadUrl,
-        Delim,
+        Delim: struct {
+            start: usize,
+            end: usize,
+        },
         Number,
         Percentage,
         Dimension,
@@ -409,9 +538,29 @@ pub const CssTokenizer = struct {
     };
 };
 
-test "CSS Tokenizer" {
+test "CSS Tokenizer empty" {
     var tokenizer: CssTokenizer = CssTokenizer.init("");
-    try expect((try tokenizer.next()) == null);
+    try expect(tokenizer.next() == .Eof);
+}
+
+test "CSS Tokenizer simple" {
+    const text: []const u8 =
+        \\@font-face{font-family:'press start 2p';src:url(./PressStart2P-Regular.ttf)format('truetype')}
+        \\body {
+        \\  font-family: 'press start 2p';
+        \\  font-size: 16px;
+        \\  background-color: #131315;
+        \\  color: white;
+        \\}
+        \\
+    ;
+    var tokenizer: CssTokenizer = CssTokenizer.init(text);
+    var token: CssTokenizer.CssToken = tokenizer.next();
+    try expect(token == .AtKeyword);
+    try expect(std.mem.eql(u8, "@font-face", text[token.AtKeyword.start..token.AtKeyword.end]));
+
+    token = tokenizer.next();
+    try expect(token == .LeftCurlyBracket);
 }
 
 pub const CssParser = struct {
@@ -712,7 +861,7 @@ pub const CssParser = struct {
     }
 };
 
-test "CSS parser" {
+test "Deprecated CSS parser" {
     var ruleSet = try CssParser.parseDeprecated(std.testing.allocator, "body{background-color: #131315;color:white}", false);
     defer ruleSet.deinit();
 }
