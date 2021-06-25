@@ -102,7 +102,7 @@ pub fn init(allocator: *Allocator, string: []const u8) !*Document {
     var styleElementRuleSets = ArrayList(*CssRuleSet).init(allocator);
     for (styleElements.items) |styleNode| {
         var element = @fieldParentPtr(Element, "node", styleNode);
-        var elementRuleSet = try CssParser.parse(allocator, element.innerHTML, false);
+        var elementRuleSet = try CssParser.parseDeprecated(allocator, element.innerHTML, false);
 
         const style_sheet = try CssStyleSheet.init(allocator, element.innerHTML);
         errdefer style_sheet.deinit();
@@ -154,15 +154,20 @@ pub fn deinit(self: *Document, allocator: *Allocator) void {
         ruleSet.deinit();
     }
     self.styleElementRuleSets.deinit();
+
+    self.node.childNodes.deinit();
+
     if (self.doctypeElement != null) {
         self.doctypeElement.?.deinit();
     }
     self.htmlElement.deinit();
+
     self.cssRuleSet.deinit();
     for (self.style_sheet_list.items) |style_sheet| {
         style_sheet.deinit();
     }
     self.style_sheet_list.deinit();
+    allocator.destroy(self.style_sheet_list);
     allocator.destroy(self);
 }
 

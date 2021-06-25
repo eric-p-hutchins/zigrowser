@@ -217,10 +217,12 @@ pub const CssStyleSheet = struct {
 
     pub fn init(allocator: *Allocator, text: []const u8) !*CssStyleSheet {
         var style_sheet: *CssStyleSheet = try allocator.create(CssStyleSheet);
+        var css_rules: ArrayList(*CssRule) = ArrayList(*CssRule).init(allocator);
+
         style_sheet.* = CssStyleSheet{
             .allocator = allocator,
             .media = ArrayList([]u8).init(allocator),
-            .css_rules = ArrayList(*CssRule).init(allocator),
+            .css_rules = css_rules,
         };
         return style_sheet;
     }
@@ -366,7 +368,63 @@ pub const Declaration = struct {
     }
 };
 
+pub const CssTokenizer = struct {
+    text: []const u8,
+
+    pub fn init(text: []const u8) CssTokenizer {
+        return CssTokenizer{
+            .text = text,
+        };
+    }
+
+    pub fn next(self: *CssTokenizer) !?CssToken {
+        return null;
+    }
+
+    pub const CssToken = union(enum) {
+        Ident,
+        Function,
+        At,
+        Hash,
+        String,
+        BadString,
+        Url,
+        BadUrl,
+        Delim,
+        Number,
+        Percentage,
+        Dimension,
+        Whitespace,
+        CDO,
+        CDC,
+        Colon,
+        Semicolon,
+        Comma,
+        LeftSquareBracket,
+        RightSquareBracket,
+        LeftParen,
+        RightParen,
+        LeftCurlyBracket,
+        RightCurlyBracket,
+    };
+};
+
+test "CSS Tokenizer" {
+    var tokenizer: CssTokenizer = CssTokenizer.init("");
+    try expect((try tokenizer.next()) == null);
+}
+
 pub const CssParser = struct {
+    allocator: *Allocator,
+    copy_strings: bool,
+
+    pub fn init(allocator: *Allocator, copy_strings: bool) CssParser {
+        return CssParser{
+            .allocator = allocator,
+            .copy_strings = copy_strings,
+        };
+    }
+
     fn parseColor(value: []const u8) ?CssValue {
         if (value[0] == '#') {
             var hex1 = value[1];
@@ -480,7 +538,7 @@ pub const CssParser = struct {
         return false;
     }
 
-    pub fn parse(allocator: *Allocator, text: []const u8, noBlock: bool) !*RuleSet {
+    pub fn parseDeprecated(allocator: *Allocator, text: []const u8, noBlock: bool) !*RuleSet {
         var genericRuleSet = try GenericCssRuleSet.init(allocator);
 
         var inAtRule: bool = false;
@@ -655,7 +713,7 @@ pub const CssParser = struct {
 };
 
 test "CSS parser" {
-    var ruleSet = try CssParser.parse(std.testing.allocator, "body{background-color: #131315;color:white}", false);
+    var ruleSet = try CssParser.parseDeprecated(std.testing.allocator, "body{background-color: #131315;color:white}", false);
     defer ruleSet.deinit();
 }
 
